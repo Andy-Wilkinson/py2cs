@@ -28,6 +28,10 @@ namespace Py2Cs.Translators
                     return TranslateStatement_Return(returnStatement);
                 case IfStatement ifStatement:
                     return TranslateStatement_If(ifStatement);
+                case WithStatement withStatement:
+                    return TranslateStatement_With(withStatement);
+                case RaiseStatement raiseStatement:
+                    return TranslateStatement_Raise(raiseStatement);
                 default:
                     return SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unknown statement type ({statement.NodeName})");
             }
@@ -177,6 +181,44 @@ namespace Py2Cs.Translators
             }
 
             return ifStatementSyntax;
+        }
+
+        private SyntaxResult<SyntaxNode> TranslateStatement_Raise(RaiseStatement raiseStatement)
+        {
+            var value = TranslateExpression(raiseStatement.ExceptType);
+
+            if (value.IsError)
+                return SyntaxResult<SyntaxNode>.WithErrors(value.Errors);
+
+            return SyntaxFactory.ThrowStatement(value.Syntax);
+        }
+
+        private SyntaxResult<SyntaxNode> TranslateStatement_With(WithStatement withStatement)
+        {
+            var contextManager = TranslateExpression(withStatement.ContextManager);
+            var body = TranslateBlock_Block(withStatement.Body);
+
+            if (contextManager.IsError)
+                return SyntaxResult<SyntaxNode>.WithErrors(contextManager.Errors);
+
+            var usingStatement = SyntaxFactory.UsingStatement(body).WithExpression(contextManager.Syntax);
+
+            if (withStatement.Variable != null)
+            {
+                if (withStatement.Variable is NameExpression nameExpression)
+                {
+                    var declarationType = SyntaxFactory.ParseTypeName("object");
+                    var variable = SyntaxFactory.VariableDeclarator(nameExpression.Name);
+                    var declaration = SyntaxFactory.VariableDeclaration(declarationType, SyntaxFactory.SingletonSeparatedList(variable));
+                    usingStatement = usingStatement.WithDeclaration(declaration);
+                }
+                else
+                {
+                    return SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unknown with statment variable ({withStatement.Variable})");
+                }
+            }
+
+            return usingStatement;
         }
     }
 }
