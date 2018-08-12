@@ -13,12 +13,14 @@ namespace Py2Cs.Translators
         {
             switch (pyExpression)
             {
+                case UnaryExpression unaryExpression:
+                    return TranslateExpression_Unary(unaryExpression);
+                case BinaryExpression binaryExpression:
+                    return TranslateExpression_Binary(binaryExpression);
                 case AndExpression andExpression:
                     return TranslateExpression_And(andExpression);
                 case OrExpression orExpression:
                     return TranslateExpression_Or(orExpression);
-                case BinaryExpression binaryExpression:
-                    return TranslateExpression_Binary(binaryExpression);
                 case ParenthesisExpression parenthesisExpression:
                     return TranslateExpression_Parenthesis(parenthesisExpression);
                 case ConstantExpression constantExpression:
@@ -34,14 +36,50 @@ namespace Py2Cs.Translators
             }
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_And(AndExpression andExpression)
+        private SyntaxKind TranslateOperator(PythonOperator pythonOperator)
         {
-            return TranslateExpression_Binary(SyntaxKind.LogicalAndExpression, andExpression.Left, andExpression.Right);
+            switch (pythonOperator)
+            {
+                // Unary expressions
+                case PythonOperator.Not: return SyntaxKind.LogicalNotExpression;
+
+                // Binary expressions
+                case PythonOperator.Add: return SyntaxKind.AddExpression;
+                case PythonOperator.Subtract: return SyntaxKind.SubtractExpression;
+                case PythonOperator.Multiply: return SyntaxKind.MultiplyExpression;
+                case PythonOperator.Divide: return SyntaxKind.DivideExpression;
+                case PythonOperator.Mod: return SyntaxKind.ModuloExpression;
+                case PythonOperator.BitwiseAnd: return SyntaxKind.BitwiseAndExpression;
+                case PythonOperator.BitwiseOr: return SyntaxKind.BitwiseOrExpression;
+                case PythonOperator.Equals: return SyntaxKind.EqualsExpression;
+                case PythonOperator.LessThan: return SyntaxKind.LessThanExpression;
+                case PythonOperator.LessThanOrEqual: return SyntaxKind.LessThanOrEqualExpression;
+                case PythonOperator.GreaterThan: return SyntaxKind.GreaterThanExpression;
+                case PythonOperator.GreaterThanOrEqual: return SyntaxKind.GreaterThanOrEqualExpression;
+                case PythonOperator.NotEquals: return SyntaxKind.NotEqualsExpression;
+                case PythonOperator.Is: return SyntaxKind.IsExpression;
+                default: return SyntaxKind.None;
+            }
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Or(OrExpression orExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Unary(UnaryExpression unaryExpression)
         {
-            return TranslateExpression_Binary(SyntaxKind.LogicalOrExpression, orExpression.Left, orExpression.Right);
+            var operatorKind = TranslateOperator(unaryExpression.Op);
+
+            if (operatorKind == SyntaxKind.None)
+                return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown unary expression type ({unaryExpression.Op})");
+
+            return TranslateExpression_Unary(operatorKind, unaryExpression.Expression);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Unary(SyntaxKind kind, Expression expression)
+        {
+            var exp = TranslateExpression(expression);
+
+            if (exp.IsError)
+                return SyntaxResult<ExpressionSyntax>.WithErrors(exp.Errors);
+
+            return SyntaxFactory.PrefixUnaryExpression(kind, exp.Syntax);
         }
 
         private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary(BinaryExpression binaryExpression)
@@ -68,27 +106,6 @@ namespace Py2Cs.Translators
             return SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, parenthesisExpression);
         }
 
-        private SyntaxKind TranslateOperator(PythonOperator pythonOperator)
-        {
-            switch (pythonOperator)
-            {
-                case PythonOperator.Add: return SyntaxKind.AddExpression;
-                case PythonOperator.Subtract: return SyntaxKind.SubtractExpression;
-                case PythonOperator.Multiply: return SyntaxKind.MultiplyExpression;
-                case PythonOperator.Divide: return SyntaxKind.DivideExpression;
-                case PythonOperator.BitwiseAnd: return SyntaxKind.BitwiseAndExpression;
-                case PythonOperator.BitwiseOr: return SyntaxKind.BitwiseOrExpression;
-                case PythonOperator.Equals: return SyntaxKind.EqualsExpression;
-                case PythonOperator.LessThan: return SyntaxKind.LessThanExpression;
-                case PythonOperator.LessThanOrEqual: return SyntaxKind.LessThanOrEqualExpression;
-                case PythonOperator.GreaterThan: return SyntaxKind.GreaterThanExpression;
-                case PythonOperator.GreaterThanOrEqual: return SyntaxKind.GreaterThanOrEqualExpression;
-                case PythonOperator.NotEquals: return SyntaxKind.NotEqualsExpression;
-                case PythonOperator.Is: return SyntaxKind.IsExpression;
-                default: return SyntaxKind.None;
-            }
-        }
-
         private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary(SyntaxKind kind, Expression leftExpression, Expression rightExpression)
         {
             var left = TranslateExpression(leftExpression);
@@ -98,6 +115,16 @@ namespace Py2Cs.Translators
                 return SyntaxResult<ExpressionSyntax>.WithErrors(Enumerable.Concat(left.Errors, right.Errors));
 
             return SyntaxFactory.BinaryExpression(kind, left.Syntax, right.Syntax);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_And(AndExpression andExpression)
+        {
+            return TranslateExpression_Binary(SyntaxKind.LogicalAndExpression, andExpression.Left, andExpression.Right);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Or(OrExpression orExpression)
+        {
+            return TranslateExpression_Binary(SyntaxKind.LogicalOrExpression, orExpression.Left, orExpression.Right);
         }
 
         private SyntaxResult<ExpressionSyntax> TranslateExpression_Parenthesis(ParenthesisExpression parenthesisExpression)
@@ -116,6 +143,8 @@ namespace Py2Cs.Translators
             {
                 case null:
                     return SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression);
+                case int value:
+                    return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(value));
                 case string str:
                     return SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(str));
                 default:
