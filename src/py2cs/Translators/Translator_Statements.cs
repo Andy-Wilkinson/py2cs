@@ -28,6 +28,8 @@ namespace Py2Cs.Translators
                     return TranslateStatement_Return(returnStatement);
                 case IfStatement ifStatement:
                     return TranslateStatement_If(ifStatement);
+                case WhileStatement whileStatement:
+                    return TranslateStatement_While(whileStatement);
                 case WithStatement withStatement:
                     return TranslateStatement_With(withStatement);
                 case RaiseStatement raiseStatement:
@@ -181,6 +183,17 @@ namespace Py2Cs.Translators
             }
 
             return ifStatementSyntax;
+        }
+
+        private SyntaxResult<SyntaxNode> TranslateStatement_While(WhileStatement whileStatement)
+        {
+            var expression = TranslateExpression(whileStatement.Test);
+            var body = TranslateBlock_Block(whileStatement.Body);
+
+            if (expression.IsError)
+                return SyntaxResult<SyntaxNode>.WithErrors(expression.Errors);
+
+            return SyntaxFactory.WhileStatement(expression.Syntax, body);
         }
 
         private SyntaxResult<SyntaxNode> TranslateStatement_Raise(RaiseStatement raiseStatement)
