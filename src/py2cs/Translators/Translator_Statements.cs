@@ -141,20 +141,39 @@ namespace Py2Cs.Translators
 
         private SyntaxResult<SyntaxNode> TranslateStatement_If(IfStatement ifStatement)
         {
-            if (ifStatement.Tests.Count != 1 || ifStatement.ElseStatement != null)
-                return SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unsupported if statement structure");
+            var ifSyntax = TranslateStatement_If(ifStatement.Tests, ifStatement.ElseStatement);
 
-            IfStatementSyntax ifStatementSyntax = null;
+            if (ifSyntax.IsError)
+                return SyntaxResult<SyntaxNode>.WithErrors(ifSyntax.Errors);
 
-            foreach (IfStatementTest ifStatementTest in ifStatement.Tests)
+            return ifSyntax.Syntax;
+        }
+
+        private SyntaxResult<StatementSyntax> TranslateStatement_If(IList<IfStatementTest> tests, Statement elseStatement)
+        {
+            var expression = TranslateExpression(tests[0].Test);
+            var body = TranslateBlock_Block(tests[0].Body);
+
+            if (expression.IsError)
+                return SyntaxResult<StatementSyntax>.WithErrors(expression.Errors);
+
+            IfStatementSyntax ifStatementSyntax = SyntaxFactory.IfStatement(expression.Syntax, body);
+
+            if (tests.Count > 1)
             {
-                var expression = TranslateExpression(ifStatementTest.Test);
-                var body = TranslateBlock_Block(ifStatementTest.Body);
+                var elseIf = TranslateStatement_If(tests.Skip(1).ToList(), elseStatement);
 
-                if (expression.IsError)
-                    return SyntaxResult<SyntaxNode>.WithErrors(expression.Errors);
+                if (elseIf.IsError)
+                    return SyntaxResult<StatementSyntax>.WithErrors(expression.Errors);
 
-                ifStatementSyntax = SyntaxFactory.IfStatement(expression.Syntax, body);
+                var elseClause = SyntaxFactory.ElseClause(elseIf.Syntax);
+                ifStatementSyntax = ifStatementSyntax.WithElse(elseClause);
+            }
+            else if (elseStatement != null)
+            {
+                var elseBody = TranslateBlock_Block(elseStatement);
+                var elseClause = SyntaxFactory.ElseClause(elseBody);
+                ifStatementSyntax = ifStatementSyntax.WithElse(elseClause);
             }
 
             return ifStatementSyntax;
