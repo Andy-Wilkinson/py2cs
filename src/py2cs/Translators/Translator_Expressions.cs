@@ -27,6 +27,8 @@ namespace Py2Cs.Translators
                     return TranslateExpression_Name(nameExpression);
                 case MemberExpression memberExpression:
                     return TranslateExpression_Member(memberExpression);
+                case CallExpression callExpression:
+                    return TranslateExpression_Call(callExpression);
                 default:
                     return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown expression type ({pyExpression.NodeName}, {pyExpression.GetType()})");
             }
@@ -143,6 +145,36 @@ namespace Py2Cs.Translators
                 return SyntaxResult<ExpressionSyntax>.WithErrors(target.Errors);
 
             return SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target.Syntax, name);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Call(CallExpression callExpression)
+        {
+            var target = TranslateExpression(callExpression.Target);
+
+            if (target.IsError)
+                return SyntaxResult<ExpressionSyntax>.WithErrors(target.Errors);
+
+            var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
+
+            foreach (Arg arg in callExpression.Args)
+            {
+                var argumentExpression = TranslateExpression(arg.Expression);
+
+                if (argumentExpression.IsError)
+                    return SyntaxResult<ExpressionSyntax>.WithErrors(argumentExpression.Errors);
+
+                var argument = SyntaxFactory.Argument(argumentExpression.Syntax);
+
+                if (arg.Name != null)
+                {
+                    var name = SyntaxFactory.NameColon(arg.Name);
+                    argument = argument.WithNameColon(name);
+                }
+
+                argumentList = argumentList.Add(argument);
+            }
+
+            return SyntaxFactory.InvocationExpression(target.Syntax, SyntaxFactory.ArgumentList(argumentList));
         }
     }
 }
