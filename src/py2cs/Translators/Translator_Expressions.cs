@@ -25,6 +25,10 @@ namespace Py2Cs.Translators
                     return TranslateExpression_Parenthesis(parenthesisExpression);
                 case ConstantExpression constantExpression:
                     return TranslateExpression_Constant(constantExpression);
+                case ListExpression listExpression:
+                    return TranslateExpression_List(listExpression);
+                case DictionaryExpression dictionaryExpression:
+                    return TranslateExpression_Dictionary(dictionaryExpression);
                 case NameExpression nameExpression:
                     return TranslateExpression_Name(nameExpression);
                 case MemberExpression memberExpression:
@@ -35,7 +39,6 @@ namespace Py2Cs.Translators
                     return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown expression type ({pyExpression.NodeName}, {pyExpression.GetType()})");
             }
         }
-
         private SyntaxKind TranslateOperator(PythonOperator pythonOperator)
         {
             switch (pythonOperator)
@@ -150,6 +153,56 @@ namespace Py2Cs.Translators
                 default:
                     return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown constant expression type: {constantExpression.Value.GetType()}");
             }
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_List(ListExpression listExpression)
+        {
+            var items = listExpression.Items.Select(item => TranslateExpression(item));
+
+            if (items.Count(item => item.IsError) > 0)
+            {
+                var errors = items.SelectMany(item => item.Errors);
+                return SyntaxResult<ExpressionSyntax>.WithErrors(errors.ToList());
+            }
+
+            var arrayType = SyntaxFactory.ArrayType(SyntaxFactory.ParseTypeName("object[]"));
+            var itemExpressions = SyntaxFactory.SeparatedList<ExpressionSyntax>(items.Select(item => item.Syntax));
+            var initializer = SyntaxFactory.InitializerExpression(SyntaxKind.ArrayInitializerExpression, itemExpressions);
+
+            return SyntaxFactory.ArrayCreationExpression(arrayType, initializer);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Dictionary(DictionaryExpression dictionaryExpression)
+        {
+            var dictionaryType = SyntaxFactory.ParseTypeName("Dictionary<object,object>");
+            var dictionaryCreator = SyntaxFactory.ObjectCreationExpression(dictionaryType);
+
+            if (dictionaryExpression.Items.Count > 0)
+            {
+                var items = SyntaxFactory.SeparatedList<ExpressionSyntax>();
+
+                foreach (var item in dictionaryExpression.Items)
+                {
+                    if (item.SliceStep != null || item.StepProvided == true)
+                        return SyntaxResult<ExpressionSyntax>.WithError("// py2cs: Unsupported slice step in dictionary expression");
+
+                    var keyExpression = TranslateExpression(item.SliceStart);
+                    var valueExpression = TranslateExpression(item.SliceStop);
+
+                    if (keyExpression.IsError || valueExpression.IsError)
+                        return SyntaxResult<ExpressionSyntax>.WithErrors(Enumerable.Concat(keyExpression.Errors, valueExpression.Errors));
+
+                    var keyValueList = SyntaxFactory.SeparatedList<ExpressionSyntax>(new[] { keyExpression.Syntax, valueExpression.Syntax });
+                    var keyValuePair = SyntaxFactory.InitializerExpression(SyntaxKind.ComplexElementInitializerExpression, keyValueList);
+                    items = items.Add(keyValuePair);
+                }
+
+                var itemExpressions = SyntaxFactory.SeparatedList<ExpressionSyntax>(items);
+                var initializer = SyntaxFactory.InitializerExpression(SyntaxKind.CollectionInitializerExpression, itemExpressions);
+                dictionaryCreator = dictionaryCreator.WithInitializer(initializer);
+            }
+
+            return dictionaryCreator;
         }
 
         private ExpressionSyntax TranslateExpression_Name(NameExpression nameExpression)

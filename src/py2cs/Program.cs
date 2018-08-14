@@ -41,14 +41,14 @@ namespace Py2Cs
 
         static void Test()
         {
-            var text = "public class Test { // With comment }";
+            var text = "public class Test { public A() { var x = new System.Collections.Generic.Dictionary<object, object>{ {1,2}, {2,3}}}; }";
             SyntaxTree x = SyntaxFactory.ParseSyntaxTree(text);
             Dump(x.GetRoot(), "");
         }
 
         private static void Dump(SyntaxNode syntaxNode, string prefix)
         {
-            Console.WriteLine(prefix + " " + syntaxNode.GetType());
+            Console.WriteLine(prefix + " " + syntaxNode.GetType() + "[" + syntaxNode.Kind() + "]");
 
             if (syntaxNode is CSharpSyntaxNode csharpSyntaxNode)
             {
