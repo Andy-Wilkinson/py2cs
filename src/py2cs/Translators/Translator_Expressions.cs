@@ -33,12 +33,17 @@ namespace Py2Cs.Translators
                     return TranslateExpression_Name(nameExpression);
                 case MemberExpression memberExpression:
                     return TranslateExpression_Member(memberExpression);
+                case IndexExpression indexExpression:
+                    return TranslateExpression_Index(indexExpression);
+                case TupleExpression tupleExpression:
+                    return TranslateExpression_Tuple(tupleExpression);
                 case CallExpression callExpression:
                     return TranslateExpression_Call(callExpression);
                 default:
                     return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown expression type ({pyExpression.NodeName}, {pyExpression.GetType()})");
             }
         }
+
         private SyntaxKind TranslateOperator(PythonOperator pythonOperator)
         {
             switch (pythonOperator)
@@ -227,6 +232,37 @@ namespace Py2Cs.Translators
                 return SyntaxResult<ExpressionSyntax>.WithErrors(target.Errors);
 
             return SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target.Syntax, name);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Index(IndexExpression indexExpression)
+        {
+            var target = TranslateExpression(indexExpression.Target);
+            var index = TranslateExpression(indexExpression.Index);
+
+            if (target.IsError || index.IsError)
+                return SyntaxResult<ExpressionSyntax>.WithErrors(Enumerable.Concat(target.Errors, index.Errors));
+
+            var indexArgument = SyntaxFactory.Argument(index.Syntax);
+            var argumentList = SyntaxFactory.BracketedArgumentList(SyntaxFactory.SingletonSeparatedList(indexArgument));
+
+            return SyntaxFactory.ElementAccessExpression(target.Syntax, argumentList);
+        }
+
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Tuple(TupleExpression tupleExpression)
+        {
+            var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
+
+            foreach (Expression expression in tupleExpression.Items)
+            {
+                var argumentExpression = TranslateExpression(expression);
+
+                if (argumentExpression.IsError)
+                    return SyntaxResult<ExpressionSyntax>.WithErrors(argumentExpression.Errors);
+
+                argumentList = argumentList.Add(SyntaxFactory.Argument(argumentExpression.Syntax));
+            }
+
+            return SyntaxFactory.TupleExpression(argumentList);
         }
 
         private SyntaxResult<ExpressionSyntax> TranslateExpression_Call(CallExpression callExpression)
