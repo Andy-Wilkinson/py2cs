@@ -107,12 +107,17 @@ namespace Py2Cs.Translators
 
         private SyntaxResult<SyntaxNode> TranslateStatement_Expression(ExpressionStatement expressionStatement)
         {
+            if (expressionStatement.Expression is ConstantExpression constantExpression)
+            {
+                return SyntaxResult<SyntaxNode>.WithError("/*" + constantExpression.Value + "*/");
+            }
+
             var expression = TranslateExpression(expressionStatement.Expression);
 
             if (expression.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(expression.Errors);
-            else
-                return SyntaxFactory.ExpressionStatement(expression.Syntax);
+
+            return SyntaxFactory.ExpressionStatement(expression.Syntax);
         }
 
         private SyntaxResult<SyntaxNode> TranslateStatement_Assignment(AssignmentStatement assignmentStatement)
