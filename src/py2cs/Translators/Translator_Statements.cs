@@ -34,6 +34,8 @@ namespace Py2Cs.Translators
                     return TranslateStatement_With(withStatement);
                 case RaiseStatement raiseStatement:
                     return TranslateStatement_Raise(raiseStatement);
+                case AssertStatement assertStatement:
+                    return TranslateStatement_Assert(assertStatement);
                 default:
                     return SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unknown statement type ({statement.NodeName})");
             }
@@ -232,6 +234,33 @@ namespace Py2Cs.Translators
             }
 
             return usingStatement;
+        }
+
+        private SyntaxResult<SyntaxNode> TranslateStatement_Assert(AssertStatement assertStatement)
+        {
+            var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
+
+            var test = TranslateExpression(assertStatement.Test);
+
+            if (test.IsError)
+                return SyntaxResult<SyntaxNode>.WithErrors(test.Errors);
+
+            argumentList = argumentList.Add(SyntaxFactory.Argument(test.Syntax));
+
+            if (assertStatement.Message != null)
+            {
+                var message = TranslateExpression(assertStatement.Message);
+
+                if (message.IsError)
+                    return SyntaxResult<SyntaxNode>.WithErrors(message.Errors);
+
+                argumentList = argumentList.Add(SyntaxFactory.Argument(message.Syntax));
+            }
+
+            var target = SyntaxFactory.ParseName("System.Diagnostics.Debug.Assert");
+            var invocationExpression = SyntaxFactory.InvocationExpression(target, SyntaxFactory.ArgumentList(argumentList));
+
+            return SyntaxFactory.ExpressionStatement(invocationExpression);
         }
     }
 }
