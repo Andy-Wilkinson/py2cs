@@ -50,21 +50,36 @@ namespace Py2Cs.Translators
             {
                 // Unary expressions
                 case PythonOperator.Not: return SyntaxKind.LogicalNotExpression;
+                // TODO : Pos
+                // TODO : Invert
+                // TODO : Negate
 
                 // Binary expressions
                 case PythonOperator.Add: return SyntaxKind.AddExpression;
                 case PythonOperator.Subtract: return SyntaxKind.SubtractExpression;
                 case PythonOperator.Multiply: return SyntaxKind.MultiplyExpression;
                 case PythonOperator.Divide: return SyntaxKind.DivideExpression;
+                case PythonOperator.TrueDivide: return SyntaxKind.DivideExpression;
                 case PythonOperator.Mod: return SyntaxKind.ModuloExpression;
                 case PythonOperator.BitwiseAnd: return SyntaxKind.BitwiseAndExpression;
+                // TODO : Xor
                 case PythonOperator.BitwiseOr: return SyntaxKind.BitwiseOrExpression;
-                case PythonOperator.Equals: return SyntaxKind.EqualsExpression;
+                case PythonOperator.ExclusiveOr: return SyntaxKind.ExclusiveOrExpression;
+                case PythonOperator.LeftShift: return SyntaxKind.LeftShiftExpression;
+                case PythonOperator.RightShift: return SyntaxKind.RightShiftExpression;
+                // TODO : Power
+                // TODO : FloorDivide
                 case PythonOperator.LessThan: return SyntaxKind.LessThanExpression;
                 case PythonOperator.LessThanOrEqual: return SyntaxKind.LessThanOrEqualExpression;
                 case PythonOperator.GreaterThan: return SyntaxKind.GreaterThanExpression;
                 case PythonOperator.GreaterThanOrEqual: return SyntaxKind.GreaterThanOrEqualExpression;
+                // TODO : Equal
+                case PythonOperator.Equals: return SyntaxKind.EqualsExpression;
+                // TODO : NotEqual
                 case PythonOperator.NotEquals: return SyntaxKind.NotEqualsExpression;
+                // TODO : In
+                // TODO : NotIn
+                // Note: IsNot is implemented as a special case
                 case PythonOperator.Is: return SyntaxKind.IsExpression;
                 default: return SyntaxKind.None;
             }
