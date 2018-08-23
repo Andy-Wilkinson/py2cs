@@ -90,7 +90,7 @@ namespace Py2Cs.Translators
                     var parameterExpression = TranslateExpression(pyParameter.DefaultValue);
 
                     if (parameterExpression.IsError)
-                        parameterSyntax.WithTrailingTrivia(parameterExpression.Errors);
+                        parameterSyntax = parameterSyntax.WithTrailingTrivia(parameterExpression.Errors);
                     else
                         parameterSyntax = parameterSyntax.WithDefault(SyntaxFactory.EqualsValueClause(parameterExpression.Syntax));
                 }
