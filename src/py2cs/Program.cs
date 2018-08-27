@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using Buildalyzer.Workspaces;
 using IronPython;
 using IronPython.Compiler;
 using IronPython.Hosting;
+using McMaster.Extensions.CommandLineUtils;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,28 +17,38 @@ using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting.Providers;
 using Microsoft.Scripting.Runtime;
 using Py2Cs.Generators;
+using Py2Cs.Translators;
 
 namespace Py2Cs
 {
     class Program
     {
-        static async Task Main(string[] args)
+        public static async Task<int> Main(string[] args)
+        => await CommandLineApplication.ExecuteAsync<Program>(args);
+
+        [Argument(0, "Project", "The .csproj file to convert")]
+        [Required]
+        public string Project { get; }
+
+        [Option(Description = "The root directory for locating python files")]
+        public string PythonDir { get; }
+
+        private async Task OnExecute()
         {
-            // Test();
-            // return;
-
-            var inputCsprojFile = "../../../test-py/test-py.csproj";
-
             // Load C# project
 
             var manager = new AnalyzerManager();
-            var analyzer = manager.GetProject(inputCsprojFile);
+            var analyzer = manager.GetProject(Project);
             var workspace = analyzer.GetWorkspace();
             var project = workspace.CurrentSolution.Projects.First();
 
             // Code generation
 
-            var generator = new Generator();
+            var translator = new Translator();
+            var generator = new Generator(translator)
+            {
+                PythonDir = this.PythonDir
+            };
             var newProject = await generator.Generate(project);
 
             // Save project changes
@@ -53,30 +65,6 @@ namespace Py2Cs
                 var code = documentRoot.ToFullString();
                 File.WriteAllText(document.FilePath, code);
             }
-        }
-
-        static void Test()
-        {
-            var text = "public class Test { public A() { var x = new System.Collections.Generic.Dictionary<object, object>{ {1,2}, {2,3}}}; }";
-            SyntaxTree x = SyntaxFactory.ParseSyntaxTree(text);
-            Dump(x.GetRoot(), "");
-        }
-
-        private static void Dump(SyntaxNode syntaxNode, string prefix)
-        {
-            Console.WriteLine(prefix + " " + syntaxNode.GetType() + "[" + syntaxNode.Kind() + "]");
-
-            if (syntaxNode is CSharpSyntaxNode csharpSyntaxNode)
-            {
-                foreach (var trivia in csharpSyntaxNode.GetLeadingTrivia())
-                    Console.WriteLine(prefix + "> Leading Trivia: " + trivia.GetType());
-
-                foreach (var trivia in csharpSyntaxNode.GetTrailingTrivia())
-                    Console.WriteLine(prefix + "> Trailing Trivia: " + trivia.GetType());
-            }
-
-            foreach (var child in syntaxNode.ChildNodes())
-                Dump(child, prefix + "-");
         }
     }
 }

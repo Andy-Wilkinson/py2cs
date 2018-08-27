@@ -3,11 +3,21 @@ using IronPython.Compiler.Ast;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Py2Cs.Translators;
 
 namespace Py2Cs.Generators
 {
     public class Generator
     {
+        public Generator(Translator translator)
+        {
+            this.Translator = translator;
+        }
+
+        public string PythonDir { get; set; }
+
+        public Translator Translator { get; }
+
         public async Task<Project> Generate(Project project)
         {
             var compilation = await project.GetCompilationAsync();
@@ -20,7 +30,7 @@ namespace Py2Cs.Generators
 
                 var model = compilation.GetSemanticModel(documentTree);
 
-                var methodGenerator = new MethodGeneratorRewriter(model);
+                var methodGenerator = new MethodGeneratorRewriter(this, model);
 
                 documentRoot = methodGenerator.Visit(documentRoot);
 

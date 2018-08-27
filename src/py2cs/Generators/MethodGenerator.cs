@@ -16,10 +16,13 @@ namespace Py2Cs.Generators
 {
     public class MethodGeneratorRewriter : CSharpSyntaxRewriter
     {
+        private readonly Generator _generator;
+
         private readonly SemanticModel _semanticModel;
 
-        public MethodGeneratorRewriter(SemanticModel semanticModel)
+        public MethodGeneratorRewriter(Generator generator, SemanticModel semanticModel)
         {
+            this._generator = generator;
             this._semanticModel = semanticModel;
         }
 
@@ -31,12 +34,10 @@ namespace Py2Cs.Generators
 
             if (pythonMethodAttribute != null && pythonMethodAttribute.Generate == true)
             {
-                string sourceFile = node.GetLocation().SourceTree.FilePath;
-                var pythonFile = Path.Combine(Path.GetDirectoryName(sourceFile), pythonMethodAttribute.File);
+                var pythonFile = GetPythonFilename(node, pythonMethodAttribute.File);
                 var ast = ParsePythonFile(pythonFile);
 
-                Translator translator = new Translator();
-                var translatedDocument = translator.Translate(ast);
+                var translatedDocument = _generator.Translator.Translate(ast);
 
                 var functionParts = pythonMethodAttribute.Function.Split(".");
 
@@ -60,6 +61,22 @@ namespace Py2Cs.Generators
             }
 
             return node;
+        }
+
+        private string GetPythonFilename(MethodDeclarationSyntax node, string pythonFile)
+        {
+            var sourceFile = node.GetLocation().SourceTree.FilePath;
+            var sourceLocalFilename = Path.Combine(Path.GetDirectoryName(sourceFile), pythonFile);
+
+            if (File.Exists(sourceLocalFilename))
+                return sourceLocalFilename;
+
+            var pythonFolderFilename = Path.Combine(_generator.PythonDir, pythonFile);
+
+            if (File.Exists(pythonFolderFilename))
+                return pythonFolderFilename;
+
+            throw new FileNotFoundException();
         }
 
         private static PythonMethodAttribute GetPythonMethodAttribute(IMethodSymbol methodSymbol)
