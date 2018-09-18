@@ -10,52 +10,57 @@ namespace Py2Cs.Translators
 {
     public partial class Translator
     {
-        private SyntaxResult<SyntaxNode> TranslateStatement(Statement statement)
+        private (SyntaxResult<SyntaxNode>, TranslatorState) TranslateStatement(Statement statement, TranslatorState state)
         {
             switch (statement)
             {
-                case ImportStatement importStatement:
-                    return TranslateStatement_ImportStatement(importStatement);
+                case FromImportStatement fromImportStatement:
+                    return TranslateStatement_FromImportStatement(fromImportStatement, state);
+                // case ImportStatement importStatement:
+                //     return TranslateStatement_ImportStatement(importStatement, state);
                 case ClassDefinition classDefinition:
-                    return TranslateStatement_Class(classDefinition);
+                    return (TranslateStatement_Class(classDefinition, state), state);
                 case FunctionDefinition functionDefinition:
-                    return TranslateStatement_Function(functionDefinition);
+                    return (TranslateStatement_Function(functionDefinition, state), state);
                 case ExpressionStatement expressionStatement:
-                    return TranslateStatement_Expression(expressionStatement);
+                    return (TranslateStatement_Expression(expressionStatement, state), state);
                 case AssignmentStatement assignmentStatement:
-                    return TranslateStatement_Assignment(assignmentStatement);
+                    return (TranslateStatement_Assignment(assignmentStatement, state), state);
                 case ReturnStatement returnStatement:
-                    return TranslateStatement_Return(returnStatement);
+                    return (TranslateStatement_Return(returnStatement, state), state);
                 case IfStatement ifStatement:
-                    return TranslateStatement_If(ifStatement);
+                    return (TranslateStatement_If(ifStatement, state), state);
                 case WhileStatement whileStatement:
-                    return TranslateStatement_While(whileStatement);
+                    return (TranslateStatement_While(whileStatement, state), state);
                 case WithStatement withStatement:
-                    return TranslateStatement_With(withStatement);
+                    return (TranslateStatement_With(withStatement, state), state);
                 case RaiseStatement raiseStatement:
-                    return TranslateStatement_Raise(raiseStatement);
+                    return (TranslateStatement_Raise(raiseStatement, state), state);
                 case AssertStatement assertStatement:
-                    return TranslateStatement_Assert(assertStatement);
+                    return (TranslateStatement_Assert(assertStatement, state), state);
                 default:
-                    return SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unknown statement type ({statement.NodeName})");
+                    return (SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unknown statement type ({statement.NodeName})"), state);
             }
         }
 
-        private UsingDirectiveSyntax TranslateStatement_ImportStatement(ImportStatement importStatement)
+        private (SyntaxResult<SyntaxNode>, TranslatorState) TranslateStatement_FromImportStatement(FromImportStatement fromImportStatement, TranslatorState state)
         {
-            var importNames = string.Join(", ", importStatement.Names.Select(name => name.MakeString()));
-            var importAsNames = string.Join(", ", importStatement.AsNames);
+            for (int nameIndex = 0; nameIndex < fromImportStatement.Names.Count; nameIndex++)
+            {
+                var name = fromImportStatement.Names[nameIndex];
+                var asName = fromImportStatement.AsNames[nameIndex] ?? name;
 
-            var nameSyntax = SyntaxFactory.ParseName(importNames);
+                state = state.WithVariable(asName, name);
+            }
 
-            return SyntaxFactory.UsingDirective(nameSyntax);
+            return (SyntaxFactory.EmptyStatement(), state);
         }
 
-        private ClassDeclarationSyntax TranslateStatement_Class(ClassDefinition pyClassDefinition)
+        private ClassDeclarationSyntax TranslateStatement_Class(ClassDefinition pyClassDefinition, TranslatorState state)
         {
             var classDeclaration = SyntaxFactory.ClassDeclaration(pyClassDefinition.Name);
 
-            var children = TranslateBlock_Members(pyClassDefinition.Body);
+            (var children, _) = TranslateBlock_Members(pyClassDefinition.Body, state);
 
             if (children.IsError)
             {
@@ -75,7 +80,7 @@ namespace Py2Cs.Translators
             return classDeclaration;
         }
 
-        private MemberDeclarationSyntax TranslateStatement_Function(FunctionDefinition pyFunctionDefinition)
+        private MemberDeclarationSyntax TranslateStatement_Function(FunctionDefinition pyFunctionDefinition, TranslatorState state)
         {
             var returnType = SyntaxFactory.ParseTypeName("void");
             var methodDeclaration = SyntaxFactory.MethodDeclaration(returnType, pyFunctionDefinition.Name);
@@ -87,7 +92,7 @@ namespace Py2Cs.Translators
 
                 if (pyParameter.DefaultValue != null)
                 {
-                    var parameterExpression = TranslateExpression(pyParameter.DefaultValue);
+                    var parameterExpression = TranslateExpression(pyParameter.DefaultValue, state);
 
                     if (parameterExpression.IsError)
                         parameterSyntax = parameterSyntax.WithTrailingTrivia(parameterExpression.Errors);
@@ -98,21 +103,21 @@ namespace Py2Cs.Translators
                 methodDeclaration = methodDeclaration.AddParameterListParameters(parameterSyntax);
             }
 
-            BlockSyntax body = TranslateBlock_Block(pyFunctionDefinition.Body);
+            var body = TranslateBlock_Block(pyFunctionDefinition.Body, state);
 
             methodDeclaration = methodDeclaration.WithBody(SyntaxFactory.Block(body));
 
             return methodDeclaration;
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_Expression(ExpressionStatement expressionStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_Expression(ExpressionStatement expressionStatement, TranslatorState state)
         {
             if (expressionStatement.Expression is ConstantExpression constantExpression)
             {
                 return SyntaxResult<SyntaxNode>.WithError("/* " + constantExpression.Value + " */");
             }
 
-            var expression = TranslateExpression(expressionStatement.Expression);
+            var expression = TranslateExpression(expressionStatement.Expression, state);
 
             if (expression.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(expression.Errors);
@@ -120,13 +125,13 @@ namespace Py2Cs.Translators
             return SyntaxFactory.ExpressionStatement(expression.Syntax);
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_Assignment(AssignmentStatement assignmentStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_Assignment(AssignmentStatement assignmentStatement, TranslatorState state)
         {
             if (assignmentStatement.Left.Count != 1)
                 return SyntaxResult<SyntaxNode>.WithError($"// py2cs: Unsupported assignment left expression count");
 
-            var leftExpression = TranslateExpression(assignmentStatement.Left[0]);
-            var rightExpression = TranslateExpression(assignmentStatement.Right);
+            var leftExpression = TranslateExpression(assignmentStatement.Left[0], state);
+            var rightExpression = TranslateExpression(assignmentStatement.Right, state);
 
             if (leftExpression.IsError || rightExpression.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(Enumerable.Concat(leftExpression.Errors, rightExpression.Errors));
@@ -135,13 +140,13 @@ namespace Py2Cs.Translators
             return SyntaxFactory.ExpressionStatement(expression);
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_Return(ReturnStatement returnStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_Return(ReturnStatement returnStatement, TranslatorState state)
         {
             ReturnStatementSyntax returnStatementSyntax = SyntaxFactory.ReturnStatement();
 
             if (returnStatement.Expression != null)
             {
-                var expression = TranslateExpression(returnStatement.Expression);
+                var expression = TranslateExpression(returnStatement.Expression, state);
 
                 if (expression.IsError)
                     returnStatementSyntax = returnStatementSyntax.WithTrailingTrivia(expression.Errors);
@@ -152,9 +157,9 @@ namespace Py2Cs.Translators
             return returnStatementSyntax;
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_If(IfStatement ifStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_If(IfStatement ifStatement, TranslatorState state)
         {
-            var ifSyntax = TranslateStatement_If(ifStatement.Tests, ifStatement.ElseStatement);
+            var ifSyntax = TranslateStatement_If(ifStatement.Tests, ifStatement.ElseStatement, state);
 
             if (ifSyntax.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(ifSyntax.Errors);
@@ -162,10 +167,10 @@ namespace Py2Cs.Translators
             return ifSyntax.Syntax;
         }
 
-        private SyntaxResult<StatementSyntax> TranslateStatement_If(IList<IfStatementTest> tests, Statement elseStatement)
+        private SyntaxResult<StatementSyntax> TranslateStatement_If(IList<IfStatementTest> tests, Statement elseStatement, TranslatorState state)
         {
-            var expression = TranslateExpression(tests[0].Test);
-            var body = TranslateBlock_Block(tests[0].Body);
+            var expression = TranslateExpression(tests[0].Test, state);
+            var body = TranslateBlock_Block(tests[0].Body, state);
 
             if (expression.IsError)
                 return SyntaxResult<StatementSyntax>.WithErrors(expression.Errors);
@@ -174,7 +179,7 @@ namespace Py2Cs.Translators
 
             if (tests.Count > 1)
             {
-                var elseIf = TranslateStatement_If(tests.Skip(1).ToList(), elseStatement);
+                var elseIf = TranslateStatement_If(tests.Skip(1).ToList(), elseStatement, state);
 
                 if (elseIf.IsError)
                     return SyntaxResult<StatementSyntax>.WithErrors(expression.Errors);
@@ -184,7 +189,7 @@ namespace Py2Cs.Translators
             }
             else if (elseStatement != null)
             {
-                var elseBody = TranslateBlock_Block(elseStatement);
+                var elseBody = TranslateBlock_Block(elseStatement, state);
                 var elseClause = SyntaxFactory.ElseClause(elseBody);
                 ifStatementSyntax = ifStatementSyntax.WithElse(elseClause);
             }
@@ -192,10 +197,10 @@ namespace Py2Cs.Translators
             return ifStatementSyntax;
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_While(WhileStatement whileStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_While(WhileStatement whileStatement, TranslatorState state)
         {
-            var expression = TranslateExpression(whileStatement.Test);
-            var body = TranslateBlock_Block(whileStatement.Body);
+            var expression = TranslateExpression(whileStatement.Test, state);
+            var body = TranslateBlock_Block(whileStatement.Body, state);
 
             if (expression.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(expression.Errors);
@@ -203,9 +208,9 @@ namespace Py2Cs.Translators
             return SyntaxFactory.WhileStatement(expression.Syntax, body);
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_Raise(RaiseStatement raiseStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_Raise(RaiseStatement raiseStatement, TranslatorState state)
         {
-            var value = TranslateExpression(raiseStatement.ExceptType);
+            var value = TranslateExpression(raiseStatement.ExceptType, state);
 
             if (value.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(value.Errors);
@@ -213,10 +218,10 @@ namespace Py2Cs.Translators
             return SyntaxFactory.ThrowStatement(value.Syntax);
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_With(WithStatement withStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_With(WithStatement withStatement, TranslatorState state)
         {
-            var contextManager = TranslateExpression(withStatement.ContextManager);
-            var body = TranslateBlock_Block(withStatement.Body);
+            var contextManager = TranslateExpression(withStatement.ContextManager, state);
+            var body = TranslateBlock_Block(withStatement.Body, state);
 
             if (contextManager.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(contextManager.Errors);
@@ -241,11 +246,11 @@ namespace Py2Cs.Translators
             return usingStatement;
         }
 
-        private SyntaxResult<SyntaxNode> TranslateStatement_Assert(AssertStatement assertStatement)
+        private SyntaxResult<SyntaxNode> TranslateStatement_Assert(AssertStatement assertStatement, TranslatorState state)
         {
             var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
 
-            var test = TranslateExpression(assertStatement.Test);
+            var test = TranslateExpression(assertStatement.Test, state);
 
             if (test.IsError)
                 return SyntaxResult<SyntaxNode>.WithErrors(test.Errors);
@@ -254,7 +259,7 @@ namespace Py2Cs.Translators
 
             if (assertStatement.Message != null)
             {
-                var message = TranslateExpression(assertStatement.Message);
+                var message = TranslateExpression(assertStatement.Message, state);
 
                 if (message.IsError)
                     return SyntaxResult<SyntaxNode>.WithErrors(message.Errors);

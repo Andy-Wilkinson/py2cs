@@ -9,7 +9,7 @@ namespace Py2Cs.Translators
 {
     public partial class Translator
     {
-        private SyntaxResult<SyntaxNode[]> TranslateBlock_Members(Statement statement)
+        private (SyntaxResult<SyntaxNode[]>, TranslatorState) TranslateBlock_Members(Statement statement, TranslatorState state)
         {
             if (statement is SuiteStatement suiteStatement)
             {
@@ -18,7 +18,8 @@ namespace Py2Cs.Translators
 
                 foreach (Statement memberStatement in suiteStatement.Statements)
                 {
-                    var member = TranslateStatement(memberStatement);
+                    SyntaxResult<SyntaxNode> member;
+                    (member, state) = TranslateStatement(memberStatement, state);
 
                     if (member.IsError)
                     {
@@ -36,22 +37,22 @@ namespace Py2Cs.Translators
                     if (members.Count > 0)
                         members[members.Count - 1] = members[members.Count - 1].WithTrailingTrivia(errors);
                     else
-                        return SyntaxResult<SyntaxNode[]>.WithErrors(errors);
+                        return (SyntaxResult<SyntaxNode[]>.WithErrors(errors), state);
                 }
 
-                return members.ToArray();
+                return (members.ToArray(), state);
             }
             else
             {
-                return SyntaxResult<SyntaxNode[]>.WithError($"// py2cs: Expected SuiteStatement");
+                return (SyntaxResult<SyntaxNode[]>.WithError($"// py2cs: Expected SuiteStatement"), state);
             }
         }
 
-        private BlockSyntax TranslateBlock_Block(Statement statement)
+        private BlockSyntax TranslateBlock_Block(Statement statement, TranslatorState state)
         {
             var body = SyntaxFactory.Block();
 
-            var children = TranslateBlock_Members(statement);
+            (var children, _) = TranslateBlock_Members(statement, state);
 
             if (children.IsError)
             {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using IronPython.Compiler.Ast;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,8 +12,9 @@ namespace Py2Cs.Translators
         public CompilationUnitSyntax Translate(PythonAst ast)
         {
             var compilationUnit = SyntaxFactory.CompilationUnit();
+            var state = new TranslatorState(ImmutableDictionary<string, string>.Empty);
 
-            var children = TranslateBlock_Members(ast.Body);
+            (var children, _) = TranslateBlock_Members(ast.Body, state);
 
             if (children.IsError)
             {

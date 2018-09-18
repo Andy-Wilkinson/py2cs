@@ -9,36 +9,36 @@ namespace Py2Cs.Translators
 {
     public partial class Translator
     {
-        private SyntaxResult<ExpressionSyntax> TranslateExpression(Expression pyExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression(Expression pyExpression, TranslatorState state)
         {
             switch (pyExpression)
             {
                 case UnaryExpression unaryExpression:
-                    return TranslateExpression_Unary(unaryExpression);
+                    return TranslateExpression_Unary(unaryExpression, state);
                 case BinaryExpression binaryExpression:
-                    return TranslateExpression_Binary(binaryExpression);
+                    return TranslateExpression_Binary(binaryExpression, state);
                 case AndExpression andExpression:
-                    return TranslateExpression_And(andExpression);
+                    return TranslateExpression_And(andExpression, state);
                 case OrExpression orExpression:
-                    return TranslateExpression_Or(orExpression);
+                    return TranslateExpression_Or(orExpression, state);
                 case ParenthesisExpression parenthesisExpression:
-                    return TranslateExpression_Parenthesis(parenthesisExpression);
+                    return TranslateExpression_Parenthesis(parenthesisExpression, state);
                 case ConstantExpression constantExpression:
                     return TranslateExpression_Constant(constantExpression);
                 case ListExpression listExpression:
-                    return TranslateExpression_List(listExpression);
+                    return TranslateExpression_List(listExpression, state);
                 case DictionaryExpression dictionaryExpression:
-                    return TranslateExpression_Dictionary(dictionaryExpression);
+                    return TranslateExpression_Dictionary(dictionaryExpression, state);
                 case NameExpression nameExpression:
                     return TranslateExpression_Name(nameExpression);
                 case MemberExpression memberExpression:
-                    return TranslateExpression_Member(memberExpression);
+                    return TranslateExpression_Member(memberExpression, state);
                 case IndexExpression indexExpression:
-                    return TranslateExpression_Index(indexExpression);
+                    return TranslateExpression_Index(indexExpression, state);
                 case TupleExpression tupleExpression:
-                    return TranslateExpression_Tuple(tupleExpression);
+                    return TranslateExpression_Tuple(tupleExpression, state);
                 case CallExpression callExpression:
-                    return TranslateExpression_Call(callExpression);
+                    return TranslateExpression_Call(callExpression, state);
                 default:
                     return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown expression type ({pyExpression.NodeName}, {pyExpression.GetType()})");
             }
@@ -85,19 +85,19 @@ namespace Py2Cs.Translators
             }
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Unary(UnaryExpression unaryExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Unary(UnaryExpression unaryExpression, TranslatorState state)
         {
             var operatorKind = TranslateOperator(unaryExpression.Op);
 
             if (operatorKind == SyntaxKind.None)
                 return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown unary expression type ({unaryExpression.Op})");
 
-            return TranslateExpression_Unary(operatorKind, unaryExpression.Expression);
+            return TranslateExpression_Unary(operatorKind, unaryExpression.Expression, state);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Unary(SyntaxKind kind, Expression expression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Unary(SyntaxKind kind, Expression expression, TranslatorState state)
         {
-            var exp = TranslateExpression(expression);
+            var exp = TranslateExpression(expression, state);
 
             if (exp.IsError)
                 return SyntaxResult<ExpressionSyntax>.WithErrors(exp.Errors);
@@ -105,22 +105,22 @@ namespace Py2Cs.Translators
             return SyntaxFactory.PrefixUnaryExpression(kind, exp.Syntax);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary(BinaryExpression binaryExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary(BinaryExpression binaryExpression, TranslatorState state)
         {
             if (binaryExpression.Operator == PythonOperator.IsNot)
-                return TranslateExpression_Binary_IsNot(binaryExpression.Left, binaryExpression.Right);
+                return TranslateExpression_Binary_IsNot(binaryExpression.Left, binaryExpression.Right, state);
 
             var operatorKind = TranslateOperator(binaryExpression.Operator);
 
             if (operatorKind == SyntaxKind.None)
                 return SyntaxResult<ExpressionSyntax>.WithError($"// py2cs: Unknown binary expression type ({binaryExpression.Operator})");
 
-            return TranslateExpression_Binary(operatorKind, binaryExpression.Left, binaryExpression.Right);
+            return TranslateExpression_Binary(operatorKind, binaryExpression.Left, binaryExpression.Right, state);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary_IsNot(Expression left, Expression right)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary_IsNot(Expression left, Expression right, TranslatorState state)
         {
-            var isExpression = TranslateExpression_Binary(SyntaxKind.IsExpression, left, right);
+            var isExpression = TranslateExpression_Binary(SyntaxKind.IsExpression, left, right, state);
 
             if (isExpression.IsError)
                 return SyntaxResult<ExpressionSyntax>.WithErrors(isExpression.Errors);
@@ -129,10 +129,10 @@ namespace Py2Cs.Translators
             return SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, parenthesisExpression);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary(SyntaxKind kind, Expression leftExpression, Expression rightExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Binary(SyntaxKind kind, Expression leftExpression, Expression rightExpression, TranslatorState state)
         {
-            var left = TranslateExpression(leftExpression);
-            var right = TranslateExpression(rightExpression);
+            var left = TranslateExpression(leftExpression, state);
+            var right = TranslateExpression(rightExpression, state);
 
             if (left.IsError || right.IsError)
                 return SyntaxResult<ExpressionSyntax>.WithErrors(Enumerable.Concat(left.Errors, right.Errors));
@@ -140,19 +140,19 @@ namespace Py2Cs.Translators
             return SyntaxFactory.BinaryExpression(kind, left.Syntax, right.Syntax);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_And(AndExpression andExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_And(AndExpression andExpression, TranslatorState state)
         {
-            return TranslateExpression_Binary(SyntaxKind.LogicalAndExpression, andExpression.Left, andExpression.Right);
+            return TranslateExpression_Binary(SyntaxKind.LogicalAndExpression, andExpression.Left, andExpression.Right, state);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Or(OrExpression orExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Or(OrExpression orExpression, TranslatorState state)
         {
-            return TranslateExpression_Binary(SyntaxKind.LogicalOrExpression, orExpression.Left, orExpression.Right);
+            return TranslateExpression_Binary(SyntaxKind.LogicalOrExpression, orExpression.Left, orExpression.Right, state);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Parenthesis(ParenthesisExpression parenthesisExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Parenthesis(ParenthesisExpression parenthesisExpression, TranslatorState state)
         {
-            var expression = TranslateExpression(parenthesisExpression.Expression);
+            var expression = TranslateExpression(parenthesisExpression.Expression, state);
 
             if (expression.IsError)
                 return SyntaxResult<ExpressionSyntax>.WithErrors(expression.Errors);
@@ -175,9 +175,9 @@ namespace Py2Cs.Translators
             }
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_List(ListExpression listExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_List(ListExpression listExpression, TranslatorState state)
         {
-            var items = listExpression.Items.Select(item => TranslateExpression(item));
+            var items = listExpression.Items.Select(item => TranslateExpression(item, state));
 
             if (items.Count(item => item.IsError) > 0)
             {
@@ -192,7 +192,7 @@ namespace Py2Cs.Translators
             return SyntaxFactory.ArrayCreationExpression(arrayType, initializer);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Dictionary(DictionaryExpression dictionaryExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Dictionary(DictionaryExpression dictionaryExpression, TranslatorState state)
         {
             var dictionaryType = SyntaxFactory.ParseTypeName("Dictionary<object,object>");
             var dictionaryCreator = SyntaxFactory.ObjectCreationExpression(dictionaryType);
@@ -206,8 +206,8 @@ namespace Py2Cs.Translators
                     if (item.SliceStep != null || item.StepProvided == true)
                         return SyntaxResult<ExpressionSyntax>.WithError("// py2cs: Unsupported slice step in dictionary expression");
 
-                    var keyExpression = TranslateExpression(item.SliceStart);
-                    var valueExpression = TranslateExpression(item.SliceStop);
+                    var keyExpression = TranslateExpression(item.SliceStart, state);
+                    var valueExpression = TranslateExpression(item.SliceStop, state);
 
                     if (keyExpression.IsError || valueExpression.IsError)
                         return SyntaxResult<ExpressionSyntax>.WithErrors(Enumerable.Concat(keyExpression.Errors, valueExpression.Errors));
@@ -238,9 +238,9 @@ namespace Py2Cs.Translators
             }
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Member(MemberExpression memberExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Member(MemberExpression memberExpression, TranslatorState state)
         {
-            var target = TranslateExpression(memberExpression.Target);
+            var target = TranslateExpression(memberExpression.Target, state);
             var name = SyntaxFactory.IdentifierName(memberExpression.Name);
 
             if (target.IsError)
@@ -249,10 +249,10 @@ namespace Py2Cs.Translators
             return SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target.Syntax, name);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Index(IndexExpression indexExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Index(IndexExpression indexExpression, TranslatorState state)
         {
-            var target = TranslateExpression(indexExpression.Target);
-            var index = TranslateExpression(indexExpression.Index);
+            var target = TranslateExpression(indexExpression.Target, state);
+            var index = TranslateExpression(indexExpression.Index, state);
 
             if (target.IsError || index.IsError)
                 return SyntaxResult<ExpressionSyntax>.WithErrors(Enumerable.Concat(target.Errors, index.Errors));
@@ -263,13 +263,13 @@ namespace Py2Cs.Translators
             return SyntaxFactory.ElementAccessExpression(target.Syntax, argumentList);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Tuple(TupleExpression tupleExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Tuple(TupleExpression tupleExpression, TranslatorState state)
         {
             var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
 
             foreach (Expression expression in tupleExpression.Items)
             {
-                var argumentExpression = TranslateExpression(expression);
+                var argumentExpression = TranslateExpression(expression, state);
 
                 if (argumentExpression.IsError)
                     return SyntaxResult<ExpressionSyntax>.WithErrors(argumentExpression.Errors);
@@ -280,9 +280,9 @@ namespace Py2Cs.Translators
             return SyntaxFactory.TupleExpression(argumentList);
         }
 
-        private SyntaxResult<ExpressionSyntax> TranslateExpression_Call(CallExpression callExpression)
+        private SyntaxResult<ExpressionSyntax> TranslateExpression_Call(CallExpression callExpression, TranslatorState state)
         {
-            var target = TranslateExpression(callExpression.Target);
+            var target = TranslateExpression(callExpression.Target, state);
 
             if (target.IsError)
                 return SyntaxResult<ExpressionSyntax>.WithErrors(target.Errors);
@@ -291,7 +291,7 @@ namespace Py2Cs.Translators
 
             foreach (Arg arg in callExpression.Args)
             {
-                var argumentExpression = TranslateExpression(arg.Expression);
+                var argumentExpression = TranslateExpression(arg.Expression, state);
 
                 if (argumentExpression.IsError)
                     return SyntaxResult<ExpressionSyntax>.WithErrors(argumentExpression.Errors);
