@@ -40,5 +40,16 @@ namespace Py2Cs.Translators
 
             return compilationUnit;
         }
+
+        public BlockSyntax TranslateFunctionBody(PythonNode node)
+        {
+            if (node.NodeType != PythonNodeType.Function)
+                throw new ArgumentException();
+
+            var function = (FunctionDefinition)node.Statement;
+            var body = TranslateBlock_Block(function.Body, node.State);
+
+            return body;
+        }
     }
 }

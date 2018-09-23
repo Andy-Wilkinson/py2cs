@@ -16,12 +16,6 @@ namespace Py2Cs.Translators
             {
                 case FromImportStatement fromImportStatement:
                     return TranslateStatement_FromImportStatement(fromImportStatement, state);
-                // case ImportStatement importStatement:
-                //     return TranslateStatement_ImportStatement(importStatement, state);
-                case ClassDefinition classDefinition:
-                    return (TranslateStatement_Class(classDefinition, state), state);
-                case FunctionDefinition functionDefinition:
-                    return (TranslateStatement_Function(functionDefinition, state), state);
                 case ExpressionStatement expressionStatement:
                     return (TranslateStatement_Expression(expressionStatement, state), state);
                 case AssignmentStatement assignmentStatement:
@@ -54,60 +48,6 @@ namespace Py2Cs.Translators
             }
 
             return (SyntaxFactory.EmptyStatement(), state);
-        }
-
-        private ClassDeclarationSyntax TranslateStatement_Class(ClassDefinition pyClassDefinition, TranslatorState state)
-        {
-            var classDeclaration = SyntaxFactory.ClassDeclaration(pyClassDefinition.Name);
-
-            (var children, _) = TranslateBlock_Members(pyClassDefinition.Body, state);
-
-            if (children.IsError)
-            {
-                return classDeclaration.WithTrailingTrivia(children.Errors);
-            }
-
-            foreach (var child in children.Syntax)
-            {
-                switch (child)
-                {
-                    case MemberDeclarationSyntax member:
-                        classDeclaration = classDeclaration.AddMembers(member);
-                        break;
-                }
-            }
-
-            return classDeclaration;
-        }
-
-        private MemberDeclarationSyntax TranslateStatement_Function(FunctionDefinition pyFunctionDefinition, TranslatorState state)
-        {
-            var returnType = SyntaxFactory.ParseTypeName("void");
-            var methodDeclaration = SyntaxFactory.MethodDeclaration(returnType, pyFunctionDefinition.Name);
-
-            foreach (Parameter pyParameter in pyFunctionDefinition.Parameters)
-            {
-                var parameterSyntax = SyntaxFactory.Parameter(SyntaxFactory.Identifier(pyParameter.Name))
-                        .WithType(SyntaxFactory.ParseTypeName("object"));
-
-                if (pyParameter.DefaultValue != null)
-                {
-                    var parameterExpression = TranslateExpression(pyParameter.DefaultValue, state);
-
-                    if (parameterExpression.IsError)
-                        parameterSyntax = parameterSyntax.WithTrailingTrivia(parameterExpression.Errors);
-                    else
-                        parameterSyntax = parameterSyntax.WithDefault(SyntaxFactory.EqualsValueClause(parameterExpression.Syntax));
-                }
-
-                methodDeclaration = methodDeclaration.AddParameterListParameters(parameterSyntax);
-            }
-
-            var body = TranslateBlock_Block(pyFunctionDefinition.Body, state);
-
-            methodDeclaration = methodDeclaration.WithBody(SyntaxFactory.Block(body));
-
-            return methodDeclaration;
         }
 
         private SyntaxResult<SyntaxNode> TranslateStatement_Expression(ExpressionStatement expressionStatement, TranslatorState state)

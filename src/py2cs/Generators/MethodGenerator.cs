@@ -17,13 +17,14 @@ namespace Py2Cs.Generators
     public class MethodGeneratorRewriter : CSharpSyntaxRewriter
     {
         private readonly Generator _generator;
-
         private readonly SemanticModel _semanticModel;
+        private readonly PythonCache _pythonCache;
 
-        public MethodGeneratorRewriter(Generator generator, SemanticModel semanticModel)
+        public MethodGeneratorRewriter(Generator generator, SemanticModel semanticModel, PythonCache pythonCache)
         {
             this._generator = generator;
             this._semanticModel = semanticModel;
+            this._pythonCache = pythonCache;
         }
 
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
@@ -35,29 +36,11 @@ namespace Py2Cs.Generators
             if (pythonMethodAttribute != null && pythonMethodAttribute.Generate == true)
             {
                 var pythonFile = GetPythonFilename(node, pythonMethodAttribute.File);
-                var ast = ParsePythonFile(pythonFile);
+                var rootNode = _pythonCache.GetPythonFile(pythonFile);
+                var functionNode = rootNode.GetDescendent(pythonMethodAttribute.Function);
+                var body = _generator.Translator.TranslateFunctionBody(functionNode);
 
-                var translatedDocument = _generator.Translator.Translate(ast);
-
-                var functionParts = pythonMethodAttribute.Function.Split(".");
-
-                if (functionParts.Length != 2)
-                    throw new System.NotImplementedException();
-
-                var className = functionParts[0];
-                var functionName = functionParts[1];
-
-                var sourceClass = translatedDocument.DescendantNodes()
-                        .OfType<ClassDeclarationSyntax>()
-                        .Where(c => c.Identifier.Text == className)
-                        .First();
-
-                var sourceMethod = sourceClass.DescendantNodes()
-                        .OfType<MethodDeclarationSyntax>()
-                        .Where(m => m.Identifier.Text == functionName)
-                        .First();
-
-                node = node.WithBody(sourceMethod.Body);
+                node = node.WithBody(body);
             }
 
             return node;
@@ -94,17 +77,6 @@ namespace Py2Cs.Generators
             }
 
             return null;
-        }
-
-        private static PythonAst ParsePythonFile(string path)
-        {
-            var pythonEngine = Python.CreateEngine();
-            var pythonSource = pythonEngine.CreateScriptSourceFromFile(path);
-            var pythonSourceUnit = HostingHelpers.GetSourceUnit(pythonSource);
-            var context = new CompilerContext(pythonSourceUnit, pythonEngine.GetCompilerOptions(), ErrorSink.Default);
-            var options = new PythonOptions();
-            var parser = Parser.CreateParser(context, options);
-            return parser.ParseFile(false);
         }
     }
 }

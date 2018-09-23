@@ -9,8 +9,12 @@ namespace Py2Cs.Generators
 {
     public class Generator
     {
+        private readonly PythonCache _pythonCache;
+
         public Generator(Translator translator)
         {
+            _pythonCache = new PythonCache(translator);
+
             this.Translator = translator;
         }
 
@@ -30,7 +34,7 @@ namespace Py2Cs.Generators
 
                 var model = compilation.GetSemanticModel(documentTree);
 
-                var methodGenerator = new MethodGeneratorRewriter(this, model);
+                var methodGenerator = new MethodGeneratorRewriter(this, model, _pythonCache);
 
                 documentRoot = methodGenerator.Visit(documentRoot);
 
