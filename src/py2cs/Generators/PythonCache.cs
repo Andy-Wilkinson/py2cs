@@ -4,6 +4,7 @@ using IronPython;
 using IronPython.Compiler;
 using IronPython.Compiler.Ast;
 using IronPython.Hosting;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting.Providers;
 using Microsoft.Scripting.Runtime;
@@ -13,12 +14,28 @@ namespace Py2Cs.Generators
 {
     public class PythonCache
     {
-        private Translator _translator;
+        private Generator _generator;
         private Dictionary<string, PythonNode> _pythonCache = new Dictionary<string, PythonNode>();
 
-        public PythonCache(Translator translator)
+        public PythonCache(Generator generator)
         {
-            this._translator = translator;
+            this._generator = generator;
+        }
+
+        public PythonNode GetPythonFile(CSharpSyntaxNode node, string path)
+        {
+            var sourceFile = node.GetLocation().SourceTree.FilePath;
+            var sourceLocalFilename = Path.Combine(Path.GetDirectoryName(sourceFile), path);
+
+            if (File.Exists(sourceLocalFilename))
+                return GetPythonFile(sourceLocalFilename);
+
+            var pythonFolderFilename = Path.Combine(_generator.PythonDir, path);
+
+            if (File.Exists(pythonFolderFilename))
+                return GetPythonFile(pythonFolderFilename);
+
+            throw new FileNotFoundException();
         }
 
         public PythonNode GetPythonFile(string path)
@@ -29,7 +46,7 @@ namespace Py2Cs.Generators
             if (!_pythonCache.TryGetValue(path, out rootNode))
             {
                 var pythonAst = ParsePythonFile(path);
-                rootNode = _translator.Extract(pythonAst);
+                rootNode = _generator.Translator.Extract(pythonAst);
                 _pythonCache[path] = rootNode;
             }
 

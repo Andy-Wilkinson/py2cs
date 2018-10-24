@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using IronPython.Compiler.Ast;
 using Microsoft.CodeAnalysis;
@@ -13,7 +14,7 @@ namespace Py2Cs.Generators
 
         public Generator(Translator translator)
         {
-            _pythonCache = new PythonCache(translator);
+            _pythonCache = new PythonCache(this);
 
             this.Translator = translator;
         }
@@ -24,6 +25,14 @@ namespace Py2Cs.Generators
 
         public async Task<Project> Generate(Project project)
         {
+            project = await ApplyRewriter(project, model => new ClassGeneratorRewriter(this, model, _pythonCache));
+            project = await ApplyRewriter(project, model => new MethodGeneratorRewriter(this, model, _pythonCache));
+
+            return project;
+        }
+
+        private async Task<Project> ApplyRewriter(Project project, Func<SemanticModel, CSharpSyntaxRewriter> rewriterFactory)
+        {
             var compilation = await project.GetCompilationAsync();
 
             foreach (var documentId in project.DocumentIds)
@@ -33,10 +42,8 @@ namespace Py2Cs.Generators
                 var documentRoot = await documentTree.GetRootAsync();
 
                 var model = compilation.GetSemanticModel(documentTree);
-
-                var methodGenerator = new MethodGeneratorRewriter(this, model, _pythonCache);
-
-                documentRoot = methodGenerator.Visit(documentRoot);
+                var rewriter = rewriterFactory(model);
+                documentRoot = rewriter.Visit(documentRoot);
 
                 var newDocument = document.WithSyntaxRoot(documentRoot.NormalizeWhitespace());
                 project = newDocument.Project;

@@ -41,6 +41,39 @@ namespace Py2Cs.Translators
             return compilationUnit;
         }
 
+        public MethodDeclarationSyntax TranslateFunctionDefinition(PythonNode node)
+        {
+            if (node.NodeType != PythonNodeType.Function)
+                throw new ArgumentException();
+
+            var function = (FunctionDefinition)node.Statement;
+
+            var returnType = SyntaxFactory.ParseTypeName("void");
+            var methodDeclaration = SyntaxFactory.MethodDeclaration(returnType, function.Name)
+                    .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
+                    .WithBody(SyntaxFactory.Block());
+
+            foreach (Parameter pyParameter in function.Parameters)
+            {
+                var parameterSyntax = SyntaxFactory.Parameter(SyntaxFactory.Identifier(pyParameter.Name))
+                       .WithType(SyntaxFactory.ParseTypeName("object"));
+
+                if (pyParameter.DefaultValue != null)
+                {
+                    var parameterExpression = TranslateExpression(pyParameter.DefaultValue, node.State);
+
+                    if (parameterExpression.IsError)
+                        parameterSyntax = parameterSyntax.WithTrailingTrivia(parameterExpression.Errors);
+                    else
+                        parameterSyntax = parameterSyntax.WithDefault(SyntaxFactory.EqualsValueClause(parameterExpression.Syntax));
+                }
+
+                methodDeclaration = methodDeclaration.AddParameterListParameters(parameterSyntax);
+            }
+
+            return methodDeclaration;
+        }
+
         public BlockSyntax TranslateFunctionBody(PythonNode node)
         {
             if (node.NodeType != PythonNodeType.Function)
