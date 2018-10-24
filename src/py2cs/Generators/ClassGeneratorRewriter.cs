@@ -52,9 +52,8 @@ namespace Py2Cs.Generators
                             var newMethod = _generator.Translator.TranslateFunctionDefinition(childNode);
 
                             var attributeMethodNameArg = SyntaxFactory.AttributeArgument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(functionName)));
-                            var attributeFileArg = SyntaxFactory.AttributeArgument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(pythonClassAttribute.File))).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName("File")));
                             var attributeGenerateArg = SyntaxFactory.AttributeArgument(SyntaxFactory.LiteralExpression(SyntaxKind.TrueLiteralExpression)).WithNameEquals(SyntaxFactory.NameEquals(SyntaxFactory.IdentifierName(nameof(PythonMethodAttribute.Generate))));
-                            var attributeArgList = SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(new AttributeArgumentSyntax[] { attributeMethodNameArg, attributeFileArg, attributeGenerateArg }));
+                            var attributeArgList = SyntaxFactory.AttributeArgumentList(SyntaxFactory.SeparatedList(new AttributeArgumentSyntax[] { attributeMethodNameArg, attributeGenerateArg }));
                             var attribute = SyntaxFactory.Attribute(SyntaxFactory.ParseName(nameof(PythonMethodAttribute)), attributeArgList);
                             var attributeList = SyntaxFactory.AttributeList(SyntaxFactory.SingletonSeparatedList(attribute));
                             newMethod = newMethod.WithAttributeLists(SyntaxFactory.SingletonList(attributeList));

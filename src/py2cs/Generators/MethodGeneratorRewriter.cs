@@ -55,7 +55,8 @@ namespace Py2Cs.Generators
 
             if (pythonMethodAttribute != null && pythonMethodAttribute.Generate == true)
             {
-                var rootNode = _pythonCache.GetPythonFile(node, pythonMethodAttribute.File);
+                var pythonFile = pythonMethodAttribute.File ?? methodSymbol.GetPythonFile();
+                var rootNode = _pythonCache.GetPythonFile(node, pythonFile);
                 var functionNode = rootNode.GetDescendent(pythonMethodAttribute.Function);
                 var body = _generator.Translator.TranslateFunctionBody(functionNode);
 

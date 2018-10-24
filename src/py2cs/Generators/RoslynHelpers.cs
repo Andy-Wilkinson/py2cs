@@ -39,6 +39,26 @@ namespace Py2Cs.Generators
             return null;
         }
 
+        public static string GetPythonFile(this ISymbol symbol)
+        {
+            PythonMethodAttribute pythonMethodAttribute = symbol.GetPythonMethodAttribute();
+
+            if (pythonMethodAttribute != null && pythonMethodAttribute.File != null)
+                return pythonMethodAttribute.File;
+
+            while (symbol.ContainingType != null)
+            {
+                symbol = symbol.ContainingType;
+
+                PythonClassAttribute pythonClassAttribute = symbol.GetPythonClassAttribute();
+
+                if (pythonClassAttribute != null && pythonClassAttribute.File != null)
+                    return pythonClassAttribute.File;
+            }
+
+            return null;
+        }
+
         public static T GetNamedArgument<T>(this AttributeData attribute, string name, T defaultValue)
         {
             var argument = attribute.NamedArguments.FirstOrDefault(a => a.Key == name);
