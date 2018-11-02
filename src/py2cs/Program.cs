@@ -17,6 +17,7 @@ using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting.Providers;
 using Microsoft.Scripting.Runtime;
 using Py2Cs.Generators;
+using Py2Cs.Logging;
 using Py2Cs.Translators;
 
 namespace Py2Cs
@@ -35,6 +36,8 @@ namespace Py2Cs
 
         private async Task OnExecute()
         {
+            var logger = new Logger();
+
             // Load C# project
 
             var manager = new AnalyzerManager();
@@ -45,7 +48,7 @@ namespace Py2Cs
             // Code generation
 
             var translator = new Translator();
-            var generator = new Generator(translator)
+            var generator = new Generator(translator, logger)
             {
                 PythonDir = this.PythonDir
             };

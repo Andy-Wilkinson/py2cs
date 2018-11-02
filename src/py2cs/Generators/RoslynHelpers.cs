@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using System.IO;
 using System.Linq;
 
 namespace Py2Cs.Generators
@@ -46,17 +47,35 @@ namespace Py2Cs.Generators
             if (pythonMethodAttribute != null && pythonMethodAttribute.File != null)
                 return pythonMethodAttribute.File;
 
-            while (symbol.ContainingType != null)
+            while (symbol != null)
             {
-                symbol = symbol.ContainingType;
-
                 PythonClassAttribute pythonClassAttribute = symbol.GetPythonClassAttribute();
 
                 if (pythonClassAttribute != null && pythonClassAttribute.File != null)
                     return pythonClassAttribute.File;
+
+                symbol = symbol.ContainingType;
             }
 
             return null;
+        }
+
+        public static string LocatePythonFile(this ISymbol symbol, string pythonDir)
+        {
+            string relativeFilename = symbol.GetPythonFile();
+
+            var sourceFile = symbol.Locations[0].SourceTree.FilePath;
+            var sourceLocalFilename = Path.Combine(Path.GetDirectoryName(sourceFile), relativeFilename);
+
+            if (File.Exists(sourceLocalFilename))
+                return sourceLocalFilename;
+
+            var pythonFolderFilename = Path.Combine(pythonDir, relativeFilename);
+
+            if (File.Exists(pythonFolderFilename))
+                return pythonFolderFilename;
+
+            throw new FileNotFoundException();
         }
 
         public static T GetNamedArgument<T>(this AttributeData attribute, string name, T defaultValue)
