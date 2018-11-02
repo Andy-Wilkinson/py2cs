@@ -10,14 +10,14 @@ namespace Py2Cs.Generators
 
         public PythonMappings(string pythonDir)
         {
-            TypeMappings = new Dictionary<INamedTypeSymbol, PythonTypeMapping>();
+            TypeMappings = new Dictionary<ITypeSymbol, PythonTypeMapping>();
             MethodMappings = new Dictionary<IMethodSymbol, PythonMethodMapping>();
             PythonEntryPoints = new HashSet<string>();
 
             _pythonDir = pythonDir;
         }
 
-        public Dictionary<INamedTypeSymbol, PythonTypeMapping> TypeMappings { get; }
+        public Dictionary<ITypeSymbol, PythonTypeMapping> TypeMappings { get; }
         public Dictionary<IMethodSymbol, PythonMethodMapping> MethodMappings { get; }
         public HashSet<string> PythonEntryPoints { get; }
 

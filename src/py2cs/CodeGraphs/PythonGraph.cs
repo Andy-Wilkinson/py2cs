@@ -23,5 +23,19 @@ namespace Py2Cs.CodeGraphs
 
             return file;
         }
+
+        public PythonClass GetClass(string filename, string className)
+        {
+            var pythonFile = Files[filename];
+            var childNode = pythonFile.GetDescendent(className);
+            return (PythonClass)childNode;
+        }
+
+        public PythonFunction GetFunction(string filename, string functionName)
+        {
+            var pythonFile = Files[filename];
+            var childNode = pythonFile.GetDescendent(functionName);
+            return (PythonFunction)childNode;
+        }
     }
 }

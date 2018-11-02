@@ -31,5 +31,17 @@ namespace Py2Cs.CodeGraphs
                 throw new NotImplementedException();
             }
         }
+
+        public static IPythonNode GetDescendent(this IPythonNode node, string path)
+        {
+            var pathParts = path.Split(".");
+
+            foreach (string pathPart in pathParts)
+            {
+                node = node.Children[pathPart];
+            }
+
+            return node;
+        }
     }
 }

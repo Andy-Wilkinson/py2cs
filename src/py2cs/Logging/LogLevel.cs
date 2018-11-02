@@ -2,6 +2,7 @@ namespace Py2Cs.Logging
 {
     public enum LogLevel
     {
-        Info
+        Info,
+        Error
     }
 }

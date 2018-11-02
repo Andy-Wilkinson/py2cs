@@ -7,7 +7,7 @@ namespace Py2Cs.CodeGraphs
         public PythonParameter(Parameter parameter)
         {
             this.Parameter = parameter;
-            this.Type = PythonType.Unknown;
+            this.Type = PythonTypes.Unknown;
         }
 
         public string Name => Parameter.Name;

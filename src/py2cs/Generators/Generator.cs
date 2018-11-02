@@ -39,9 +39,15 @@ namespace Py2Cs.Generators
 
             PythonGraph pythonGraph = new PythonGraph();
 
-            foreach (string entryPoint in pythonMappings.PythonEntryPoints)
+            foreach (var entryPoint in pythonMappings.PythonEntryPoints)
             {
                 pythonGraph.AddPythonFile(entryPoint);
+            }
+
+            foreach (var mapping in pythonMappings.MethodMappings)
+            {
+                var pythonFunction = pythonGraph.GetFunction(mapping.Value.File, mapping.Value.FunctionName);
+                MapFunctionTypes(pythonGraph, pythonMappings, pythonFunction, mapping.Key);
             }
 
             LogGraph(pythonGraph);
@@ -50,6 +56,79 @@ namespace Py2Cs.Generators
             // project = await ApplyRewriter(project, model => new MethodGeneratorRewriter(this, model, _pythonCache));
 
             return project;
+        }
+
+        private void MapFunctionTypes(PythonGraph pythonGraph, PythonMappings pythonMappings, PythonFunction pythonFunction, IMethodSymbol csMethod)
+        {
+            if (pythonFunction.Parameters.Count == 0)
+            {
+                if (csMethod.Parameters.Length != 0)
+                    Logger.Log($"Function {pythonFunction} does not have the expected number of parameters.", LogLevel.Error);
+
+                return;
+            }
+
+            int parameterOffset = csMethod.IsStatic ? 0 : 1;
+
+            if (csMethod.Parameters.Length != pythonFunction.Parameters.Count - parameterOffset)
+            {
+                Logger.Log($"Function {pythonFunction} does not have the expected number of parameters.", LogLevel.Error);
+                return;
+            }
+
+            // If this method is not a static method then check that the first parameter is the correct type
+
+            if (!csMethod.IsStatic)
+            {
+                var typeMapping = pythonMappings.TypeMappings[csMethod.ContainingType];
+                var pythonClass = pythonGraph.GetClass(typeMapping.File, typeMapping.ClassName);
+
+                if (pythonFunction.Parameters[0].Type != pythonClass.Type)
+                {
+                    Logger.Log($"The first parameter of {pythonFunction} does not have the right type.", LogLevel.Error);
+                    return;
+                }
+            }
+
+            // Set the types for all the parameters
+
+            for (int parameterIndex = 0; parameterIndex < csMethod.Parameters.Length; parameterIndex++)
+            {
+                var csParameter = csMethod.Parameters[parameterIndex];
+                var pythonType = GetPythonType(pythonGraph, pythonMappings, csParameter.Type);
+
+                var pythonParameter = pythonFunction.Parameters[parameterIndex + parameterOffset];
+
+                pythonParameter.Type = pythonType;
+            }
+
+            // Set the return type
+
+            var returnType = GetPythonType(pythonGraph, pythonMappings, csMethod.ReturnType);
+            pythonFunction.ReturnType = returnType;
+        }
+
+        private PythonType GetPythonType(PythonGraph pythonGraph, PythonMappings pythonMappings, ITypeSymbol type)
+        {
+            switch (type.SpecialType)
+            {
+                case SpecialType.None:
+                    var typeMapping = pythonMappings.TypeMappings[type];
+                    var pythonClass = pythonGraph.GetClass(typeMapping.File, typeMapping.ClassName);
+                    return pythonClass.Type;
+                case SpecialType.System_Void:
+                    return PythonTypes.None;
+                case SpecialType.System_String:
+                    return PythonTypes.Str;
+                case SpecialType.System_Int32:
+                    return PythonTypes.Int;
+                case SpecialType.System_Double:
+                    return PythonTypes.Float;
+                case SpecialType.System_Boolean:
+                    return PythonTypes.Bool;
+                default:
+                    return PythonTypes.Unknown;
+            }
         }
 
         private async Task<Project> ApplyRewriter(Project project, Func<SemanticModel, CSharpSyntaxRewriter> rewriterFactory)

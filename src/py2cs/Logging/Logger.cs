@@ -32,6 +32,8 @@ namespace Py2Cs.Logging
             {
                 case LogLevel.Info:
                     return ConsoleColor.Yellow;
+                case LogLevel.Error:
+                    return ConsoleColor.Red;
                 default:
                     return Console.ForegroundColor;
             }
