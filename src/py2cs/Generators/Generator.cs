@@ -53,7 +53,7 @@ namespace Py2Cs.Generators
             LogGraph(pythonGraph);
 
             // project = await ApplyRewriter(project, model => new ClassGeneratorRewriter(this, model, _pythonCache));
-            // project = await ApplyRewriter(project, model => new MethodGeneratorRewriter(this, model, _pythonCache));
+            project = await ApplyRewriter(project, model => new MethodGeneratorRewriter(this, model, pythonGraph, pythonMappings));
 
             return project;
         }

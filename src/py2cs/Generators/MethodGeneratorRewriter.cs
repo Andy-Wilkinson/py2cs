@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting.Providers;
 using Microsoft.Scripting.Runtime;
+using Py2Cs.CodeGraphs;
 using Py2Cs.Translators;
 using System.IO;
 using System.Linq;
@@ -18,13 +19,15 @@ namespace Py2Cs.Generators
     {
         private readonly Generator _generator;
         private readonly SemanticModel _semanticModel;
-        private readonly PythonCache _pythonCache;
+        private readonly PythonGraph _pythonGraph;
+        private readonly PythonMappings _pythonMappings;
 
-        public MethodGeneratorRewriter(Generator generator, SemanticModel semanticModel, PythonCache pythonCache)
+        public MethodGeneratorRewriter(Generator generator, SemanticModel semanticModel, PythonGraph pythonGraph, PythonMappings pythonMappings)
         {
             this._generator = generator;
             this._semanticModel = semanticModel;
-            this._pythonCache = pythonCache;
+            this._pythonGraph = pythonGraph;
+            this._pythonMappings = pythonMappings;
         }
 
         public override SyntaxNode VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
@@ -55,10 +58,9 @@ namespace Py2Cs.Generators
 
             if (pythonMethodAttribute != null && pythonMethodAttribute.Generate == true)
             {
-                var pythonFile = pythonMethodAttribute.File ?? methodSymbol.GetPythonFile();
-                var rootNode = _pythonCache.GetPythonFile(node, pythonFile);
-                var functionNode = rootNode.GetDescendent(pythonMethodAttribute.Function);
-                var body = _generator.Translator.TranslateFunctionBody(functionNode);
+                var pythonFile = methodSymbol.LocatePythonFile(_generator.PythonDir);
+                var pythonFunction = _pythonGraph.GetFunction(pythonFile, pythonMethodAttribute.Function);
+                var body = _generator.Translator.TranslateFunctionBody(pythonFunction);
 
                 return body;
             }

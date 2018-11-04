@@ -4,6 +4,7 @@ using IronPython.Compiler.Ast;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Py2Cs.CodeGraphs;
 
 namespace Py2Cs.Translators
 {
@@ -81,6 +82,14 @@ namespace Py2Cs.Translators
 
             var function = (FunctionDefinition)node.Statement;
             var body = TranslateBlock_Block(function.Body, node.State);
+
+            return body;
+        }
+
+        public BlockSyntax TranslateFunctionBody(PythonFunction function)
+        {
+            var state = new TranslatorState(ImmutableDictionary<string, string>.Empty);
+            var body = TranslateBlock_Block(function.PythonDefinition.Body, state);
 
             return body;
         }
