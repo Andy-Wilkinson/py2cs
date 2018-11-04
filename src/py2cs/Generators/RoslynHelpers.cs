@@ -23,6 +23,21 @@ namespace Py2Cs.Generators
             return null;
         }
 
+        public static PythonFieldAttribute GetPythonFieldAttribute(this ISymbol symbol)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass.Name == nameof(PythonFieldAttribute))
+                {
+                    var name = (string)attribute.ConstructorArguments[0].Value;
+
+                    return new PythonFieldAttribute(name);
+                }
+            }
+
+            return null;
+        }
+
         public static PythonMethodAttribute GetPythonMethodAttribute(this ISymbol symbol)
         {
             foreach (var attribute in symbol.GetAttributes())

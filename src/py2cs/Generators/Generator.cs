@@ -44,6 +44,18 @@ namespace Py2Cs.Generators
                 pythonGraph.AddPythonFile(entryPoint);
             }
 
+            foreach (var mapping in pythonMappings.FieldMappings)
+            {
+                var fieldNameParts = mapping.Value.FieldName.Split(".");
+                var className = string.Join(".", fieldNameParts.SkipLast(1));
+                var fieldName = fieldNameParts.Last();
+
+                var pythonClass = pythonGraph.GetClass(mapping.Value.File, className);
+                var pythonFieldType = GetPythonType(pythonGraph, pythonMappings, mapping.Key.Type);
+                var pythonField = PythonField.Create(fieldName, pythonFieldType);
+                pythonClass.Children[fieldName] = pythonField;
+            }
+
             foreach (var mapping in pythonMappings.MethodMappings)
             {
                 var pythonFunction = pythonGraph.GetFunction(mapping.Value.File, mapping.Value.FunctionName);
@@ -200,6 +212,9 @@ namespace Py2Cs.Generators
                     break;
                 case PythonClass pythonClass:
                     Logger.Log($"{prefix}Class: {pythonClass}", LogLevel.Info);
+                    break;
+                case PythonField pythonField:
+                    Logger.Log($"{prefix}Field: {pythonField}", LogLevel.Info);
                     break;
                 case PythonFunction pythonFunction:
                     Logger.Log($"{prefix}Function: {pythonFunction}", LogLevel.Info);

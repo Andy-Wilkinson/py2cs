@@ -11,6 +11,7 @@ namespace Py2Cs.Generators
         public PythonMappings(string pythonDir)
         {
             TypeMappings = new Dictionary<ITypeSymbol, PythonTypeMapping>();
+            FieldMappings = new Dictionary<IFieldSymbol, PythonFieldMapping>();
             MethodMappings = new Dictionary<IMethodSymbol, PythonMethodMapping>();
             PythonEntryPoints = new HashSet<string>();
 
@@ -18,6 +19,7 @@ namespace Py2Cs.Generators
         }
 
         public Dictionary<ITypeSymbol, PythonTypeMapping> TypeMappings { get; }
+        public Dictionary<IFieldSymbol, PythonFieldMapping> FieldMappings { get; }
         public Dictionary<IMethodSymbol, PythonMethodMapping> MethodMappings { get; }
         public HashSet<string> PythonEntryPoints { get; }
 
@@ -57,6 +59,17 @@ namespace Py2Cs.Generators
             {
                 switch (memberSymbol)
                 {
+                    case IFieldSymbol fieldSymbol:
+                        var fieldAttribute = fieldSymbol.GetPythonFieldAttribute();
+
+                        if (fieldAttribute != null)
+                        {
+                            string pythonFile = fieldSymbol.LocatePythonFile(_pythonDir);
+
+                            FieldMappings[fieldSymbol] = new PythonFieldMapping(pythonFile, fieldAttribute.Name);
+                            PythonEntryPoints.Add(pythonFile);
+                        }
+                        break;
                     case IMethodSymbol methodSymbol:
                         var methodAttribute = methodSymbol.GetPythonMethodAttribute();
 
