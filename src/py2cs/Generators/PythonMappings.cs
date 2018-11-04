@@ -58,13 +58,29 @@ namespace Py2Cs.Generators
                 switch (memberSymbol)
                 {
                     case IMethodSymbol methodSymbol:
-                        PythonMethodAttribute methodAttribute = methodSymbol.GetPythonMethodAttribute();
+                        var methodAttribute = methodSymbol.GetPythonMethodAttribute();
 
                         if (methodAttribute != null)
                         {
                             string pythonFile = methodSymbol.LocatePythonFile(_pythonDir);
 
-                            MethodMappings[methodSymbol] = new PythonMethodMapping(pythonFile, methodAttribute.Function);
+                            MethodMappings[methodSymbol] = new PythonMethodMapping(pythonFile, methodAttribute.Function, methodAttribute.Generate);
+                            PythonEntryPoints.Add(pythonFile);
+                        }
+
+                        break;
+                    case IPropertySymbol propertySymbol:
+                        var propertyAttribute = propertySymbol.GetPythonPropertyAttribute();
+
+                        if (propertyAttribute != null)
+                        {
+                            string pythonFile = propertySymbol.LocatePythonFile(_pythonDir);
+
+                            if (propertyAttribute.GetterFunction != null)
+                                MethodMappings[propertySymbol.GetMethod] = new PythonMethodMapping(pythonFile, propertyAttribute.GetterFunction, propertyAttribute.Generate);
+                            if (propertyAttribute.SetterFunction != null)
+                                MethodMappings[propertySymbol.SetMethod] = new PythonMethodMapping(pythonFile, propertyAttribute.SetterFunction, propertyAttribute.Generate);
+
                             PythonEntryPoints.Add(pythonFile);
                         }
 

@@ -32,7 +32,8 @@ namespace Py2Cs.Generators
 
         public override SyntaxNode VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
         {
-            var body = GenerateMethodBody(node);
+            var methodSymbol = _semanticModel.GetDeclaredSymbol(node);
+            var body = GenerateMethodBody(methodSymbol);
 
             if (body != null)
                 node = node.WithBody(body);
@@ -42,7 +43,8 @@ namespace Py2Cs.Generators
 
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
         {
-            var body = GenerateMethodBody(node);
+            var methodSymbol = _semanticModel.GetDeclaredSymbol(node);
+            var body = GenerateMethodBody(methodSymbol);
 
             if (body != null)
                 node = node.WithBody(body);
@@ -50,16 +52,23 @@ namespace Py2Cs.Generators
             return node;
         }
 
-        public BlockSyntax GenerateMethodBody(BaseMethodDeclarationSyntax node)
+        public override SyntaxNode VisitAccessorDeclaration(AccessorDeclarationSyntax node)
         {
             var methodSymbol = _semanticModel.GetDeclaredSymbol(node);
+            var body = GenerateMethodBody(methodSymbol);
 
-            var pythonMethodAttribute = methodSymbol.GetPythonMethodAttribute();
+            if (body != null)
+                node = node.WithBody(body).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.None));
 
-            if (pythonMethodAttribute != null && pythonMethodAttribute.Generate == true)
+            return node;
+        }
+
+        public BlockSyntax GenerateMethodBody(IMethodSymbol methodSymbol)
+        {
+            if (_pythonMappings.MethodMappings.TryGetValue(methodSymbol, out PythonMethodMapping methodMapping)
+                    && methodMapping.Generate)
             {
-                var pythonFile = methodSymbol.LocatePythonFile(_generator.PythonDir);
-                var pythonFunction = _pythonGraph.GetFunction(pythonFile, pythonMethodAttribute.Function);
+                var pythonFunction = _pythonGraph.GetFunction(methodMapping.File, methodMapping.FunctionName);
                 var body = _generator.Translator.TranslateFunctionBody(pythonFunction);
 
                 return body;

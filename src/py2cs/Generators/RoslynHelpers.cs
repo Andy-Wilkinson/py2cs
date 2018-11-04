@@ -40,6 +40,32 @@ namespace Py2Cs.Generators
             return null;
         }
 
+        public static PythonPropertyAttribute GetPythonPropertyAttribute(this ISymbol symbol)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass.Name == nameof(PythonPropertyAttribute))
+                {
+                    var file = attribute.GetNamedArgument<string>(nameof(PythonMethodAttribute.File), null);
+                    var generate = attribute.GetNamedArgument<bool>(nameof(PythonMethodAttribute.Generate), false);
+
+                    if (attribute.ConstructorArguments.Length == 1)
+                    {
+                        var getterFunction = (string)attribute.ConstructorArguments[0].Value;
+                        return new PythonPropertyAttribute(getterFunction) { File = file, Generate = generate };
+                    }
+                    else
+                    {
+                        var getterFunction = (string)attribute.ConstructorArguments[0].Value;
+                        var setterFunction = (string)attribute.ConstructorArguments[1].Value;
+                        return new PythonPropertyAttribute(getterFunction, setterFunction) { File = file, Generate = generate };
+                    }
+                }
+            }
+
+            return null;
+        }
+
         public static string GetPythonFile(this ISymbol symbol)
         {
             PythonMethodAttribute pythonMethodAttribute = symbol.GetPythonMethodAttribute();
