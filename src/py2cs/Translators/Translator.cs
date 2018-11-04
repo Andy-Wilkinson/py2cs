@@ -13,7 +13,7 @@ namespace Py2Cs.Translators
         public CompilationUnitSyntax Translate(PythonAst ast)
         {
             var compilationUnit = SyntaxFactory.CompilationUnit();
-            var state = new TranslatorState(ImmutableDictionary<string, string>.Empty);
+            var state = TranslatorState.Empty;
 
             (var children, _) = TranslateBlock_Members(ast.Body, state);
 
@@ -86,9 +86,8 @@ namespace Py2Cs.Translators
             return body;
         }
 
-        public BlockSyntax TranslateFunctionBody(PythonFunction function)
+        public BlockSyntax TranslateFunctionBody(PythonFunction function, TranslatorState state)
         {
-            var state = new TranslatorState(ImmutableDictionary<string, string>.Empty);
             var body = TranslateBlock_Block(function.PythonDefinition.Body, state);
 
             return body;

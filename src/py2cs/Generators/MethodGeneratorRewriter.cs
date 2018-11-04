@@ -69,7 +69,16 @@ namespace Py2Cs.Generators
                     && methodMapping.Generate)
             {
                 var pythonFunction = _pythonGraph.GetFunction(methodMapping.File, methodMapping.FunctionName);
-                var body = _generator.Translator.TranslateFunctionBody(pythonFunction);
+
+                var state = TranslatorState.Empty;
+
+                if (!methodSymbol.IsStatic)
+                {
+                    var selfSyntax = SyntaxFactory.ParseExpression("this");
+                    state = state.WithVariable(pythonFunction.Parameters[0].Name, ExpressionResult.Result(selfSyntax, pythonFunction.Parameters[0].Type));
+                }
+
+                var body = _generator.Translator.TranslateFunctionBody(pythonFunction, state);
 
                 return body;
             }

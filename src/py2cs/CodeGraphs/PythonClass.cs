@@ -8,7 +8,7 @@ namespace Py2Cs.CodeGraphs
         private PythonClass(ClassDefinition pythonDefinition)
         {
             this.PythonDefinition = pythonDefinition;
-            this.Type = PythonType.FromName(pythonDefinition.Name);
+            this.Type = PythonType.FromClass(this);
 
             this.Children = new Dictionary<string, IPythonNode>();
         }

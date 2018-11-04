@@ -14,8 +14,8 @@ namespace Py2Cs.Translators
         {
             switch (statement)
             {
-                case FromImportStatement fromImportStatement:
-                    return TranslateStatement_FromImportStatement(fromImportStatement, state);
+                // case FromImportStatement fromImportStatement:
+                //     return TranslateStatement_FromImportStatement(fromImportStatement, state);
                 case ExpressionStatement expressionStatement:
                     return (TranslateStatement_Expression(expressionStatement, state), state);
                 case AssignmentStatement assignmentStatement:
@@ -37,18 +37,18 @@ namespace Py2Cs.Translators
             }
         }
 
-        private (SyntaxResult<SyntaxNode>, TranslatorState) TranslateStatement_FromImportStatement(FromImportStatement fromImportStatement, TranslatorState state)
-        {
-            for (int nameIndex = 0; nameIndex < fromImportStatement.Names.Count; nameIndex++)
-            {
-                var name = fromImportStatement.Names[nameIndex];
-                var asName = fromImportStatement.AsNames[nameIndex] ?? name;
+        // private (SyntaxResult<SyntaxNode>, TranslatorState) TranslateStatement_FromImportStatement(FromImportStatement fromImportStatement, TranslatorState state)
+        // {
+        //     for (int nameIndex = 0; nameIndex < fromImportStatement.Names.Count; nameIndex++)
+        //     {
+        //         var name = fromImportStatement.Names[nameIndex];
+        //         var asName = fromImportStatement.AsNames[nameIndex] ?? name;
 
-                state = state.WithVariable(asName, name);
-            }
+        //         state = state.WithVariable(asName, name);
+        //     }
 
-            return (SyntaxFactory.EmptyStatement(), state);
-        }
+        //     return (SyntaxFactory.EmptyStatement(), state);
+        // }
 
         private SyntaxResult<SyntaxNode> TranslateStatement_Expression(ExpressionStatement expressionStatement, TranslatorState state)
         {

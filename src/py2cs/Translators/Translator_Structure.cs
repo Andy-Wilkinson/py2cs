@@ -9,7 +9,7 @@ namespace Py2Cs.Translators
         public PythonNode Extract(PythonAst ast)
         {
             var rootNode = PythonNode.CreateRoot();
-            var state = new TranslatorState(ImmutableDictionary<string, string>.Empty);
+            var state = TranslatorState.Empty;
 
             (rootNode, _) = Extract_Children(rootNode, ast.Body, state);
 
@@ -24,9 +24,9 @@ namespace Py2Cs.Translators
                 {
                     switch (memberStatement)
                     {
-                        case FromImportStatement fromImportStatement:
-                            state = ExtractStatement_FromImportStatement(fromImportStatement, state);
-                            break;
+                        // case FromImportStatement fromImportStatement:
+                        //     state = ExtractStatement_FromImportStatement(fromImportStatement, state);
+                        //     break;
                         case ClassDefinition classDefinition:
                             var pythonClass = ExtractStatement_Class(classDefinition, state);
                             node = node.WithChild(pythonClass);
@@ -47,18 +47,18 @@ namespace Py2Cs.Translators
             }
         }
 
-        private TranslatorState ExtractStatement_FromImportStatement(FromImportStatement fromImportStatement, TranslatorState state)
-        {
-            for (int nameIndex = 0; nameIndex < fromImportStatement.Names.Count; nameIndex++)
-            {
-                var name = fromImportStatement.Names[nameIndex];
-                var asName = fromImportStatement.AsNames[nameIndex] ?? name;
+        // private TranslatorState ExtractStatement_FromImportStatement(FromImportStatement fromImportStatement, TranslatorState state)
+        // {
+        //     for (int nameIndex = 0; nameIndex < fromImportStatement.Names.Count; nameIndex++)
+        //     {
+        //         var name = fromImportStatement.Names[nameIndex];
+        //         var asName = fromImportStatement.AsNames[nameIndex] ?? name;
 
-                state = state.WithVariable(asName, name);
-            }
+        //         state = state.WithVariable(asName, name);
+        //     }
 
-            return state;
-        }
+        //     return state;
+        // }
 
         private PythonNode ExtractStatement_Class(ClassDefinition definition, TranslatorState state)
         {
