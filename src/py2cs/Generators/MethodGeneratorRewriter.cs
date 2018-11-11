@@ -72,10 +72,24 @@ namespace Py2Cs.Generators
 
                 var state = TranslatorState.Empty;
 
-                if (!methodSymbol.IsStatic)
+                int parameterOffset = methodSymbol.IsStatic ? 0 : 1;
+
+                for (int parameterIndex = 0; parameterIndex < pythonFunction.Parameters.Count; parameterIndex++)
                 {
-                    var selfSyntax = SyntaxFactory.ParseExpression("this");
-                    state = state.WithVariable(pythonFunction.Parameters[0].Name, ExpressionResult.Result(selfSyntax, pythonFunction.Parameters[0].Type));
+                    var parameter = pythonFunction.Parameters[parameterIndex];
+
+                    ExpressionSyntax parameterSyntax;
+                    if (!methodSymbol.IsStatic && parameterIndex == 0)
+                    {
+                        parameterSyntax = SyntaxFactory.ParseExpression("this");
+                    }
+                    else
+                    {
+                        var csParameterName = methodSymbol.Parameters[parameterIndex - parameterOffset].Name;
+                        parameterSyntax = SyntaxFactory.ParseExpression(csParameterName);
+                    }
+
+                    state = state.WithVariable(parameter.Name, ExpressionResult.Result(parameterSyntax, parameter.Type));
                 }
 
                 var body = _generator.Translator.TranslateFunctionBody(pythonFunction, state);

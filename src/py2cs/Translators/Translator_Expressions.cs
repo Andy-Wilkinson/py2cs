@@ -259,20 +259,9 @@ namespace Py2Cs.Translators
 
             var name = SyntaxFactory.IdentifierName(memberExpression.Name);
             var expression = SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target.Syntax, name);
-            var expressionType = GetMemberExpressionType(memberNode);
+            var expressionType = new PythonType(memberNode);
 
             return ExpressionResult.Result(expression, expressionType);
-        }
-
-        private PythonType GetMemberExpressionType(IPythonNode memberNode)
-        {
-            switch (memberNode)
-            {
-                case PythonField pythonField:
-                    return pythonField.Type;
-                default:
-                    return PythonTypes.Unknown;
-            }
         }
 
         // private ExpressionResult TranslateExpression_Index(IndexExpression indexExpression, TranslatorState state)
