@@ -27,6 +27,11 @@ namespace Py2Cs.CodeGraphs
 
         public Dictionary<string, IPythonNode> Children { get; }
 
+        public static PythonFile CreateWithoutFile(string filename)
+        {
+            return new PythonFile(filename, null);
+        }
+
         public static PythonFile CreateFromFile(string filename)
         {
             var pythonAst = ParsePythonFile(filename);

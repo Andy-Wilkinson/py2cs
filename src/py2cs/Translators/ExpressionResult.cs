@@ -46,12 +46,12 @@ namespace Py2Cs.Translators
         static public ExpressionResult WithError(string error)
         {
             var comment = SyntaxFactory.Comment(error);
-            return new ExpressionResult(null, null, new[] { comment });
+            return new ExpressionResult(null, PythonTypes.Unknown, new[] { comment });
         }
 
         static public ExpressionResult WithErrors(IEnumerable<SyntaxTrivia> errors)
         {
-            return new ExpressionResult(null, null, errors);
+            return new ExpressionResult(null, PythonTypes.Unknown, errors);
         }
     }
 }

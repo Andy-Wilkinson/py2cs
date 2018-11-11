@@ -1,30 +1,17 @@
 namespace Py2Cs.CodeGraphs
 {
-    public class PythonType
+    public struct PythonType
     {
-        private PythonType(string name, PythonClass pythonClass)
+        public PythonType(IPythonNode node)
         {
-            this.Name = name;
-            this.Class = pythonClass;
+            this.Node = node;
         }
 
-        public string Name { get; }
-
-        public PythonClass Class { get; }
+        public IPythonNode Node { get; }
 
         public override string ToString()
         {
-            return Name;
-        }
-
-        public static PythonType FromClass(PythonClass pythonClass)
-        {
-            return new PythonType(pythonClass.Name, pythonClass);
-        }
-
-        public static PythonType FromName(string name)
-        {
-            return new PythonType(name, null);
+            return Node.ToString();
         }
     }
 }

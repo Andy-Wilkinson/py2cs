@@ -95,7 +95,7 @@ namespace Py2Cs.Generators
                 var typeMapping = pythonMappings.TypeMappings[csMethod.ContainingType];
                 var pythonClass = pythonGraph.GetClass(typeMapping.File, typeMapping.ClassName);
 
-                if (pythonFunction.Parameters[0].Type != pythonClass.Type)
+                if (pythonFunction.Parameters[0].Type.Node != pythonClass)
                 {
                     Logger.Log($"The first parameter of {pythonFunction} does not have the right type.", LogLevel.Error);
                     return;
@@ -127,7 +127,7 @@ namespace Py2Cs.Generators
                 case SpecialType.None:
                     var typeMapping = pythonMappings.TypeMappings[type];
                     var pythonClass = pythonGraph.GetClass(typeMapping.File, typeMapping.ClassName);
-                    return pythonClass.Type;
+                    return new PythonType(pythonClass);
                 case SpecialType.System_Void:
                     return PythonTypes.None;
                 case SpecialType.System_String:

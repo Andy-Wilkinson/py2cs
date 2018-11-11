@@ -249,7 +249,7 @@ namespace Py2Cs.Translators
             if (target.IsError)
                 return ExpressionResult.WithErrors(target.Errors);
 
-            var targetClass = target.Type.Class;
+            var targetClass = target.Type.Node as PythonClass;
 
             if (targetClass == null)
                 return ExpressionResult.WithError($"// py2cs: Unknown type for member expression: {memberExpression.Name}");
