@@ -252,16 +252,27 @@ namespace Py2Cs.Translators
             var targetClass = target.Type.Node as PythonClass;
 
             if (targetClass == null)
-                return ExpressionResult.WithError($"// py2cs: Unknown type for member expression: {memberExpression.Name}");
+                return ExpressionResult.WithError($"// py2cs: Unknown target for member expression: {target.Type} ({target.Type.Node.GetType()}) .{memberExpression.Name}");
 
             if (!targetClass.Children.TryGetValue(memberExpression.Name, out var memberNode))
                 return ExpressionResult.WithError($"// py2cs: Unknown member expression on type {targetClass}: {memberExpression.Name}");
 
             var name = SyntaxFactory.IdentifierName(memberExpression.Name);
             var expression = SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target.Syntax, name);
-            var expressionType = new PythonType(memberNode);
+            var expressionType = GetMemberType(memberNode);
 
             return ExpressionResult.Result(expression, expressionType);
+        }
+
+        private PythonType GetMemberType(IPythonNode memberNode)
+        {
+            switch (memberNode)
+            {
+                case PythonField field:
+                    return field.Type;
+                default:
+                    return PythonTypes.Unknown;
+            }
         }
 
         // private ExpressionResult TranslateExpression_Index(IndexExpression indexExpression, TranslatorState state)
