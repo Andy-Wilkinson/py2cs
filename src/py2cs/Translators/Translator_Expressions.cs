@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using IronPython.Compiler;
 using IronPython.Compiler.Ast;
@@ -14,10 +15,10 @@ namespace Py2Cs.Translators
         {
             switch (pyExpression)
             {
-                // case UnaryExpression unaryExpression:
-                //     return TranslateExpression_Unary(unaryExpression, state);
-                // case BinaryExpression binaryExpression:
-                //     return TranslateExpression_Binary(binaryExpression, state);
+                case UnaryExpression unaryExpression:
+                    return TranslateExpression_Unary(unaryExpression, state);
+                case BinaryExpression binaryExpression:
+                    return TranslateExpression_Binary(binaryExpression, state);
                 // case AndExpression andExpression:
                 //     return TranslateExpression_And(andExpression, state);
                 // case OrExpression orExpression:
@@ -38,8 +39,8 @@ namespace Py2Cs.Translators
                 //     return TranslateExpression_Index(indexExpression, state);
                 // case TupleExpression tupleExpression:
                 //     return TranslateExpression_Tuple(tupleExpression, state);
-                // case CallExpression callExpression:
-                //     return TranslateExpression_Call(callExpression, state);
+                case CallExpression callExpression:
+                    return TranslateExpression_Call(callExpression, state);
                 default:
                     return ExpressionResult.WithError($"// py2cs: Unknown expression type ({pyExpression.NodeName}, {pyExpression.GetType()})");
             }
@@ -86,6 +87,19 @@ namespace Py2Cs.Translators
         //     }
         // }
 
+        private ExpressionResult TranslateExpression_Unary(UnaryExpression unaryExpression, TranslatorState state)
+        {
+            var operatorName = $"$operator_{unaryExpression.Op}";
+            var operatorMethod = GetMemberExpression(unaryExpression.Expression, operatorName, state);
+
+            if (operatorMethod.IsError)
+                return ExpressionResult.WithErrors(operatorMethod.Errors);
+
+            var operatorCall = GetCallExpression(operatorMethod, new Arg[] { }, state);
+
+            return operatorCall;
+        }
+
         // private ExpressionResult TranslateExpression_Unary(UnaryExpression unaryExpression, TranslatorState state)
         // {
         //     var operatorKind = TranslateOperator(unaryExpression.Op);
@@ -105,6 +119,19 @@ namespace Py2Cs.Translators
 
         //     return SyntaxFactory.PrefixUnaryExpression(kind, exp.Syntax);
         // }
+
+        private ExpressionResult TranslateExpression_Binary(BinaryExpression binaryExpression, TranslatorState state)
+        {
+            var operatorName = $"PythonOperator_{binaryExpression.Operator}";
+            var operatorMethod = GetMemberExpression(binaryExpression.Left, operatorName, state);
+
+            if (operatorMethod.IsError)
+                return ExpressionResult.WithErrors(operatorMethod.Errors);
+
+            var operatorCall = GetCallExpression(operatorMethod, new Arg[] { new Arg(binaryExpression.Right) }, state);
+
+            return operatorCall;
+        }
 
         // private ExpressionResult TranslateExpression_Binary(BinaryExpression binaryExpression, TranslatorState state)
         // {
@@ -244,7 +271,12 @@ namespace Py2Cs.Translators
 
         private ExpressionResult TranslateExpression_Member(MemberExpression memberExpression, TranslatorState state)
         {
-            var target = TranslateExpression(memberExpression.Target, state);
+            return GetMemberExpression(memberExpression.Target, memberExpression.Name, state);
+        }
+
+        private ExpressionResult GetMemberExpression(Expression pythonTargetExpression, string memberName, TranslatorState state)
+        {
+            var target = TranslateExpression(pythonTargetExpression, state);
 
             if (target.IsError)
                 return ExpressionResult.WithErrors(target.Errors);
@@ -252,12 +284,12 @@ namespace Py2Cs.Translators
             var targetClass = target.Type.Node as PythonClass;
 
             if (targetClass == null)
-                return ExpressionResult.WithError($"// py2cs: Unknown target for member expression: {target.Type} ({target.Type.Node.GetType()}) .{memberExpression.Name}");
+                return ExpressionResult.WithError($"// py2cs: Unknown target for member expression: {target.Type}.{memberName}");
 
-            if (!targetClass.Children.TryGetValue(memberExpression.Name, out var memberNode))
-                return ExpressionResult.WithError($"// py2cs: Unknown member expression on type {targetClass}: {memberExpression.Name}");
+            if (!targetClass.Children.TryGetValue(memberName, out var memberNode))
+                return ExpressionResult.WithError($"// py2cs: Unknown member expression on type {targetClass}: {memberName}");
 
-            var name = SyntaxFactory.IdentifierName(memberExpression.Name);
+            var name = SyntaxFactory.IdentifierName(memberName);
             var expression = SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target.Syntax, name);
             var expressionType = GetMemberType(memberNode);
 
@@ -270,6 +302,8 @@ namespace Py2Cs.Translators
             {
                 case PythonField field:
                     return field.Type;
+                case PythonFunction function:
+                    return new PythonType(function);
                 default:
                     return PythonTypes.Unknown;
             }
@@ -306,34 +340,47 @@ namespace Py2Cs.Translators
         //     return SyntaxFactory.TupleExpression(argumentList);
         // }
 
-        // private ExpressionResult TranslateExpression_Call(CallExpression callExpression, TranslatorState state)
-        // {
-        //     var target = TranslateExpression(callExpression.Target, state);
+        private ExpressionResult TranslateExpression_Call(CallExpression callExpression, TranslatorState state)
+        {
+            var target = TranslateExpression(callExpression.Target, state);
 
-        //     if (target.IsError)
-        //         return ExpressionResult.WithErrors(target.Errors);
+            if (target.IsError)
+                return ExpressionResult.WithErrors(target.Errors);
 
-        //     var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
+            return GetCallExpression(target, callExpression.Args, state);
+        }
 
-        //     foreach (Arg arg in callExpression.Args)
-        //     {
-        //         var argumentExpression = TranslateExpression(arg.Expression, state);
+        private ExpressionResult GetCallExpression(ExpressionResult target, IEnumerable<Arg> args, TranslatorState state)
+        {
+            var targetFunction = target.Type.Node as PythonFunction;
 
-        //         if (argumentExpression.IsError)
-        //             return ExpressionResult.WithErrors(argumentExpression.Errors);
+            if (targetFunction == null)
+                return ExpressionResult.WithError($"// py2cs: Call expression on non-method type: {target.Type} ({target.Type.Node.GetType()})");
 
-        //         var argument = SyntaxFactory.Argument(argumentExpression.Syntax);
+            var argumentList = SyntaxFactory.SeparatedList<ArgumentSyntax>();
 
-        //         if (arg.Name != null)
-        //         {
-        //             var name = SyntaxFactory.NameColon(arg.Name);
-        //             argument = argument.WithNameColon(name);
-        //         }
+            foreach (Arg arg in args)
+            {
+                var argumentExpression = TranslateExpression(arg.Expression, state);
 
-        //         argumentList = argumentList.Add(argument);
-        //     }
+                if (argumentExpression.IsError)
+                    return ExpressionResult.WithErrors(argumentExpression.Errors);
 
-        //     return SyntaxFactory.InvocationExpression(target.Syntax, SyntaxFactory.ArgumentList(argumentList));
-        // }
+                var argument = SyntaxFactory.Argument(argumentExpression.Syntax);
+
+                if (arg.Name != null)
+                {
+                    var name = SyntaxFactory.NameColon(arg.Name);
+                    argument = argument.WithNameColon(name);
+                }
+
+                argumentList = argumentList.Add(argument);
+            }
+
+            var expression = SyntaxFactory.InvocationExpression(target.Syntax, SyntaxFactory.ArgumentList(argumentList));
+            var expressionType = targetFunction.ReturnType;
+
+            return ExpressionResult.Result(expression, expressionType);
+        }
     }
 }
