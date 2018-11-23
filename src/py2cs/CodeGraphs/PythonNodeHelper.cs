@@ -38,10 +38,29 @@ namespace Py2Cs.CodeGraphs
 
             foreach (string pathPart in pathParts)
             {
-                node = node.Children[pathPart];
+                if (!node.Children.TryGetValue(pathPart, out node))
+                    return null;
             }
 
             return node;
+        }
+
+        public static PythonClass GetOrAddClass(this IPythonNode node, string className)
+        {
+            var pathParts = className.Split(".");
+
+            foreach (string pathPart in pathParts)
+            {
+                if (!node.Children.TryGetValue(pathPart, out var childNode))
+                {
+                    childNode = PythonClass.Create(pathPart);
+                    node.Children[pathPart] = childNode;
+                }
+
+                node = childNode;
+            }
+
+            return (PythonClass)node;
         }
     }
 }

@@ -12,11 +12,12 @@ namespace Py2Cs.Generators
             {
                 if (attribute.AttributeClass.Name == nameof(PythonClassAttribute))
                 {
-                    var className = (string)attribute.ConstructorArguments[0].Value;
+                    var moduleName = (string)attribute.ConstructorArguments[0].Value;
+                    var className = (string)attribute.ConstructorArguments[1].Value;
                     var file = attribute.GetNamedArgument<string>(nameof(PythonClassAttribute.File), null);
                     var generateMethods = attribute.GetNamedArgument<bool>(nameof(PythonClassAttribute.GenerateMethods), false);
 
-                    return new PythonClassAttribute(className) { File = file, GenerateMethods = generateMethods };
+                    return new PythonClassAttribute(moduleName, className) { File = file, GenerateMethods = generateMethods };
                 }
             }
 
@@ -61,20 +62,34 @@ namespace Py2Cs.Generators
             {
                 if (attribute.AttributeClass.Name == nameof(PythonPropertyAttribute))
                 {
-                    var file = attribute.GetNamedArgument<string>(nameof(PythonMethodAttribute.File), null);
-                    var generate = attribute.GetNamedArgument<bool>(nameof(PythonMethodAttribute.Generate), false);
+                    var name = (string)attribute.ConstructorArguments[0].Value;
+                    var getterFunction = attribute.GetNamedArgument<string>(nameof(PythonPropertyAttribute.GetterFunction), null);
+                    var setterFunction = attribute.GetNamedArgument<string>(nameof(PythonPropertyAttribute.SetterFunction), null);
+                    var file = attribute.GetNamedArgument<string>(nameof(PythonPropertyAttribute.File), null);
+                    var generate = attribute.GetNamedArgument<bool>(nameof(PythonPropertyAttribute.Generate), false);
 
-                    if (attribute.ConstructorArguments.Length == 1)
+                    return new PythonPropertyAttribute(name)
                     {
-                        var getterFunction = (string)attribute.ConstructorArguments[0].Value;
-                        return new PythonPropertyAttribute(getterFunction) { File = file, Generate = generate };
-                    }
-                    else
-                    {
-                        var getterFunction = (string)attribute.ConstructorArguments[0].Value;
-                        var setterFunction = (string)attribute.ConstructorArguments[1].Value;
-                        return new PythonPropertyAttribute(getterFunction, setterFunction) { File = file, Generate = generate };
-                    }
+                        GetterFunction = getterFunction,
+                        SetterFunction = setterFunction,
+                        File = file,
+                        Generate = generate
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        public static PythonOperatorAttribute GetPythonOperatorAttribute(this ISymbol symbol)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass.Name == nameof(PythonOperatorAttribute))
+                {
+                    var op = (PythonOperator)attribute.ConstructorArguments[0].Value;
+
+                    return new PythonOperatorAttribute(op);
                 }
             }
 

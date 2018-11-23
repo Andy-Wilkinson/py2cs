@@ -11,31 +11,31 @@ using Py2Cs.Translators;
 
 namespace Py2Cs.CodeGraphs
 {
-    public class PythonFile : IPythonNode
+    public class PythonModule : IPythonNode
     {
-        private PythonFile(string filename, PythonAst pythonAst)
+        private PythonModule(string name, PythonAst pythonAst)
         {
-            this.Filename = filename;
+            this.Name = name;
             this.PythonAst = pythonAst;
 
             this.Children = new Dictionary<string, IPythonNode>();
         }
 
-        public string Filename { get; }
+        public string Name { get; }
 
         public PythonAst PythonAst { get; }
 
         public Dictionary<string, IPythonNode> Children { get; }
 
-        public static PythonFile CreateWithoutFile(string filename)
+        public static PythonModule CreateWithoutFile(string name)
         {
-            return new PythonFile(filename, null);
+            return new PythonModule(name, null);
         }
 
-        public static PythonFile CreateFromFile(string filename)
+        public static PythonModule CreateFromFile(string name)
         {
-            var pythonAst = ParsePythonFile(filename);
-            var file = new PythonFile(filename, pythonAst);
+            var pythonAst = ParsePythonFile(name);
+            var file = new PythonModule(name, pythonAst);
             file.ExtractChildren(pythonAst.Body);
             return file;
         }

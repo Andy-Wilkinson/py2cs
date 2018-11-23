@@ -6,17 +6,17 @@ namespace Py2Cs.CodeGraphs
 {
     public class PythonFunction : IPythonNode
     {
-        private PythonFunction(FunctionDefinition pythonDefinition, PythonType returnType, IList<PythonParameter> parameters)
+        private PythonFunction(string name, PythonType returnType, IList<PythonParameter> parameters)
         {
-            this.PythonDefinition = pythonDefinition;
+            this.Name = name;
             this.ReturnType = returnType;
             this.Parameters = parameters;
 
             this.Children = new Dictionary<string, IPythonNode>();
         }
 
-        public string Name => PythonDefinition.Name;
-        public FunctionDefinition PythonDefinition { get; }
+        public string Name { get; }
+        public FunctionDefinition PythonDefinition { get; set; }
         public IList<PythonParameter> Parameters { get; }
         public PythonType ReturnType { get; set; }
         public Dictionary<string, IPythonNode> Children { get; }
@@ -24,7 +24,12 @@ namespace Py2Cs.CodeGraphs
         public static PythonFunction Create(FunctionDefinition pythonDefinition)
         {
             var parameters = pythonDefinition.Parameters.Select(p => new PythonParameter(p)).ToList();
-            return new PythonFunction(pythonDefinition, PythonTypes.Unknown, parameters);
+            return new PythonFunction(pythonDefinition.Name, PythonTypes.Unknown, parameters) { PythonDefinition = pythonDefinition };
+        }
+
+        public static PythonFunction Create(string name, PythonType returnType, IList<PythonParameter> parameters)
+        {
+            return new PythonFunction(name, returnType, parameters);
         }
 
         public override string ToString()

@@ -3,18 +3,14 @@ using System;
 [System.AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
 sealed public class PythonPropertyAttribute : Attribute
 {
-    public PythonPropertyAttribute(string getterFunction, string setterFunction)
+    public PythonPropertyAttribute(string name = null)
     {
-        this.GetterFunction = getterFunction;
-        this.SetterFunction = setterFunction;
+        this.Name = name;
     }
 
-    public PythonPropertyAttribute(string getterFunction) : this(getterFunction, null)
-    {
-    }
-
-    public string GetterFunction { get; }
-    public string SetterFunction { get; }
+    public string Name { get; }
+    public string GetterFunction { get; set; }
+    public string SetterFunction { get; set; }
     public string File { get; set; }
     public bool Generate { get; set; }
 }

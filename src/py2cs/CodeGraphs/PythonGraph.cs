@@ -8,34 +8,37 @@ namespace Py2Cs.CodeGraphs
     {
         public PythonGraph()
         {
-            this.Files = new Dictionary<string, PythonFile>();
+            this.Modules = new Dictionary<string, PythonModule>();
         }
 
-        public Dictionary<string, PythonFile> Files { get; }
+        public Dictionary<string, PythonModule> Modules { get; }
 
-        public PythonFile AddPythonFile(string filename)
+        // public PythonFile AddPythonFile(string filename)
+        // {
+        //     if (Files.TryGetValue(filename, out PythonFile existingFile))
+        //         return existingFile;
+
+        //     PythonFile file = PythonFile.CreateFromFile(filename);
+        //     Files[filename] = file;
+
+        //     return file;
+        // }
+
+        public PythonModule GetOrAddModule(string moduleName)
         {
-            if (Files.TryGetValue(filename, out PythonFile existingFile))
-                return existingFile;
+            if (Modules.TryGetValue(moduleName, out var pythonModule))
+                return pythonModule;
 
-            PythonFile file = PythonFile.CreateFromFile(filename);
-            Files[filename] = file;
-
-            return file;
+            pythonModule = PythonModule.CreateWithoutFile(moduleName);
+            Modules[moduleName] = pythonModule;
+            return pythonModule;
         }
 
-        public PythonClass GetClass(string filename, string className)
-        {
-            var pythonFile = Files[filename];
-            var childNode = pythonFile.GetDescendent(className);
-            return (PythonClass)childNode;
-        }
-
-        public PythonFunction GetFunction(string filename, string functionName)
-        {
-            var pythonFile = Files[filename];
-            var childNode = pythonFile.GetDescendent(functionName);
-            return (PythonFunction)childNode;
-        }
+        // public PythonFunction GetFunction(string filename, string functionName)
+        // {
+        //     var pythonFile = Files[filename];
+        //     var childNode = pythonFile.GetDescendent(functionName);
+        //     return (PythonFunction)childNode;
+        // }
     }
 }
